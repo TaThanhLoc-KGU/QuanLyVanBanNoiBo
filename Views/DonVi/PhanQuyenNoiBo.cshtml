@@ -1,0 +1,76 @@
+@model CongVan.Models.DonVi
+@{
+    ViewData["Title"] = "Phân quyền nội bộ đơn vị";
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new();
+    var vanThuHienTai = ViewBag.VanThuHienTai as List<short> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-shield-lock-fill me-2 text-primary"></i>Phân quyền nội bộ đơn vị</h1>
+        <p class="page-header-sub">@Model.TenDV</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-person-badge text-primary"></i>
+        <span class="card-title">Văn thư đơn vị</span>
+    </div>
+    <div class="card-body">
+        <p class="fs-13 text-muted mb-3">
+            Văn thư đơn vị là người được phép tiếp nhận / cập nhật trạng thái xử lý / tải file kết quả cho các văn bản đến
+            được giao cho <strong>@Model.TenDV</strong> — không cần xin Admin trung tâm mỗi lần đổi người. Bạn thấy trang này
+            vì bạn là lãnh đạo phụ trách đơn vị này (hoặc Admin).
+        </p>
+        <label class="form-label">Chọn văn thư đơn vị <span class="text-muted fs-12">(chọn được nhiều người)</span></label>
+        <select id="vanThuSelect" class="form-select ts-select" multiple style="max-width:480px;" onchange="onChangeVanThuNative(this)">
+            @foreach (var nv in nhanVien.OrderBy(n => n.HoTen))
+            {
+                string nhan = nv.DaNghiViec ? " (đã nghỉ việc)" : "";
+                @if (vanThuHienTai.Contains(nv.MaNV)) { <option value="@nv.MaNV" selected>@nv.HoTen@nhan</option> }
+                else { <option value="@nv.MaNV">@nv.HoTen@nhan</option> }
+            }
+        </select>
+        <div id="vtnbMsg" class="fs-12 mt-2"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _vtnbPrev = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vanThuHienTai.Select(x => x.ToString()).ToList()));
+var _vtnbUrl = '@Url.Action("SetVanThuNoiBo", "DonVi")';
+
+// select.ts-select đã được site.css/_Layout.cshtml tự khởi tạo TomSelect toàn cục — không init lại ở
+// đây (init lần 2 gây lỗi "Tom Select already initialized"). Đọc giá trị qua sel.tomselect như
+// Views/Admin/LanhDaoPhong.cshtml đã làm với đúng pattern văn thư đơn vị này.
+function onChangeVanThuNative(sel) {
+    var current = sel.tomselect ? sel.tomselect.getValue() : Array.from(sel.selectedOptions).map(o => o.value);
+    onChangeVanThu(current);
+}
+
+function onChangeVanThu(current) {
+    current = (current || []).map(String);
+    var added = current.filter(v => _vtnbPrev.indexOf(v) === -1);
+    var removed = _vtnbPrev.filter(v => current.indexOf(v) === -1);
+    var msg = document.getElementById('vtnbMsg');
+
+    function post(maNV, add) {
+        var body = 'maNV=' + encodeURIComponent(maNV) + '&add=' + add;
+        return fetch(_vtnbUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body });
+    }
+
+    Promise.all(added.map(v => post(v, true)).concat(removed.map(v => post(v, false))))
+        .then(function () {
+            _vtnbPrev = current;
+            msg.style.color = 'var(--success)';
+            msg.textContent = 'Đã lưu.';
+            setTimeout(() => msg.textContent = '', 2000);
+        })
+        .catch(function () {
+            msg.style.color = 'var(--danger)';
+            msg.textContent = 'Lỗi kết nối, vui lòng thử lại.';
+        });
+}
+</script>
+}

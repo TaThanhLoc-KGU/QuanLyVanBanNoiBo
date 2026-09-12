@@ -1,0 +1,220 @@
+@model List<CongVan.Models.DonVi>
+@{ ViewData["Title"] = "Quản lý đơn vị"; }
+@{
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new List<CongVan.Models.NhanVien>();
+    int dangHD   = Model.Count(d => !d.DaGiaiThe);
+    int daGT     = Model.Count(d => d.DaGiaiThe);
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-building-fill me-2 text-primary"></i>Quản lý đơn vị</h1>
+    <div class="page-header-actions">
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalThem">
+            <i class="bi bi-plus-lg me-1"></i>Thêm đơn vị
+        </button>
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-3 flex-wrap">
+    <div class="stat-card" style="padding:14px 18px;gap:12px;flex:0 0 auto;">
+        <div class="stat-icon green" style="width:38px;height:38px;font-size:16px;"><i class="bi bi-check-circle-fill"></i></div>
+        <div><div class="stat-label">Đang hoạt động</div><div class="stat-value" style="font-size:21px;">@dangHD</div></div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;gap:12px;flex:0 0 auto;">
+        <div class="stat-icon si-gray" style="width:38px;height:38px;font-size:16px;"><i class="bi bi-archive-fill"></i></div>
+        <div><div class="stat-label">Đã giải thể</div><div class="stat-value" style="font-size:21px;color:var(--muted);">@daGT</div></div>
+    </div>
+</div>
+
+<div class="tbl-wrap">
+    <table class="app-table" style="table-layout:fixed;min-width:640px;">
+        <colgroup>
+            <col style="width:52px;"><col><col style="width:96px;"><col style="width:76px;">
+            <col style="width:180px;"><col style="width:120px;"><col style="width:96px;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Tên đơn vị</th>
+                <th>Tên tắt</th>
+                <th>Loại</th>
+                <th>Lãnh đạo hiện tại</th>
+                <th>Tình trạng</th>
+                <th style="text-align:center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var dv in Model)
+        {
+            var td = nhanVien.FirstOrDefault(n => n.MaNV == dv.MaNV_TDV);
+            <tr style="@(dv.DaGiaiThe ? "opacity:.6;" : "")">
+                <td class="fs-12 text-muted">@dv.STT</td>
+                <td>
+                    <span style="font-weight:600;">@dv.TenDV</span>
+                    @if (dv.DaGiaiThe)
+                    {
+                        <span class="sbadge sbadge-gray ms-2">Giải thể @dv.NgayGiaiThe?.ToString("MM/yyyy")</span>
+                    }
+                </td>
+                <td class="fs-13 text-muted">@dv.TenTat</td>
+                <td class="fs-13">@dv.LoaiDV</td>
+                <td class="fs-13">@td?.HoTen</td>
+                <td>
+                    @if (dv.DaGiaiThe)
+                    {
+                        <span class="sbadge sbadge-gray">Đã giải thể</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status done"><i class="bi bi-check-circle-fill"></i>Hoạt động</span>
+                    }
+                </td>
+                <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn btn-icon btn-outline-primary"
+                            onclick="moSua(@dv.MaDV,'@Html.Raw(dv.TenDV.Replace("'","\\'"))','@(dv.TenTat ?? "")','@(dv.LoaiDV ?? "")',@(dv.MaNV_TDV?.ToString() ?? "0"),@(dv.STT?.ToString() ?? "0"))"
+                            title="Chỉnh sửa">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    @if (!dv.DaGiaiThe)
+                    {
+                        <button class="btn btn-icon btn-outline-danger ms-1"
+                                onclick="giaiThe(@dv.MaDV,'@Html.Raw(dv.TenDV.Replace("'","\\'"))')"
+                                title="Giải thể">
+                            <i class="bi bi-archive"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-icon btn-outline-success ms-1"
+                                onclick="khoiPhuc(@dv.MaDV)"
+                                title="Khôi phục">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<p style="font-size:12.5px;color:var(--muted);margin-top:12px;">
+    <i class="bi bi-info-circle me-1"></i>Đơn vị giải thể được ẩn khỏi danh sách chọn nhưng dữ liệu văn bản liên quan vẫn được giữ nguyên.
+</p>
+
+@* Modal Thêm *@
+<div class="modal fade" id="modalThem" tabindex="-1">
+    <div class="modal-dialog">
+        <form asp-controller="DonVi" asp-action="Them" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm đơn vị mới</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tên đơn vị <span class="text-danger">*</span></label>
+                        <input name="TenDV" class="form-control" required placeholder="Nhập tên đơn vị..." />
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label">Tên tắt</label>
+                            <input name="TenTat" class="form-control" placeholder="VD: CNTT" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">STT</label>
+                            <input name="STT" type="number" class="form-control" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Loại DV</label>
+                            <input name="LoaiDV" class="form-control" maxlength="1" placeholder="P/K/T..." />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu đơn vị</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Modal Sửa *@
+<div class="modal fade" id="modalSua" tabindex="-1">
+    <div class="modal-dialog">
+        <form asp-controller="DonVi" asp-action="Sua" method="post">
+            <input type="hidden" id="sua_MaDV" name="MaDV" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-pencil me-2 text-primary"></i>Cập nhật đơn vị</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tên đơn vị <span class="text-danger">*</span></label>
+                        <input id="sua_TenDV" name="TenDV" class="form-control" required />
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label">Tên tắt</label>
+                            <input id="sua_TenTat" name="TenTat" class="form-control" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">STT</label>
+                            <input id="sua_STT" name="STT" type="number" class="form-control" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Loại DV</label>
+                            <input id="sua_LoaiDV" name="LoaiDV" class="form-control" maxlength="1" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label"><i class="bi bi-person-badge me-1 text-primary"></i>Lãnh đạo đơn vị</label>
+                        <select id="sua_MaNV_TDV" name="MaNV_TDV" class="form-select ts-select">
+                            <option value="0">-- Chưa chọn --</option>
+                            @foreach (var nv in nhanVien)
+                            {
+                                <option value="@nv.MaNV">@nv.HoTen (@nv.TenDV)</option>
+                            }
+                        </select>
+                        <div class="form-hint">Dùng làm lãnh đạo mặc định khi giao văn bản</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function moSua(maDV, tenDV, tenTat, loaiDV, maNVTDV, stt) {
+    document.getElementById('sua_MaDV').value = maDV;
+    document.getElementById('sua_TenDV').value = tenDV;
+    document.getElementById('sua_TenTat').value = tenTat || '';
+    document.getElementById('sua_LoaiDV').value = loaiDV || '';
+    document.getElementById('sua_STT').value = stt || '';
+    const sel = document.getElementById('sua_MaNV_TDV');
+    if (sel.tomselect) sel.tomselect.setValue(maNVTDV || 0);
+    else sel.value = maNVTDV || 0;
+    new bootstrap.Modal(document.getElementById('modalSua')).show();
+}
+function giaiThe(maDV, tenDV) {
+    if (!confirm('Giải thể đơn vị "' + tenDV + '"?\n\nDữ liệu văn bản liên quan sẽ được giữ nguyên.')) return;
+    fetch('@Url.Action("GiaiThe")', {
+        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'maDV='+maDV
+    }).then(function(){ location.reload(); });
+}
+function khoiPhuc(maDV) {
+    fetch('@Url.Action("KhoiPhuc")', {
+        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'maDV='+maDV
+    }).then(function(){ location.reload(); });
+}
+</script>
+}

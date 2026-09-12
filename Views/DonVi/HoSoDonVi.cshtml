@@ -1,0 +1,88 @@
+@model CongVan.Models.DonVi
+@{
+    ViewData["Title"] = "Hồ sơ đơn vị";
+    var lanhDao = ViewBag.LanhDao as CongVan.Models.NhanVien;
+    var vanThu = ViewBag.VanThu as List<CongVan.Models.NhanVien> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-building-fill me-2 text-primary"></i>Hồ sơ đơn vị</h1>
+        <p class="page-header-sub">@Model.TenDV</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-envelope-fill text-primary"></i>
+                <span class="card-title">Email nhận thông báo văn bản</span>
+            </div>
+            <div class="card-body">
+                <p class="fs-13 text-muted">
+                    Đây là địa chỉ hệ thống gửi email khi có <strong>văn bản đến</strong> giao cho đơn vị.
+                    Đơn vị <strong>tự cập nhật</strong> ở đây, không cần nhờ quản trị hệ thống.
+                </p>
+                <form asp-action="LuuHoSoDonVi" method="post" class="row g-2 align-items-end">
+                    <div class="col-sm-8">
+                        <label class="form-label">Email đơn vị</label>
+                        <input name="email" type="email" class="form-control" value="@Model.Email"
+                               placeholder="vd: phongdaotao@vnkgu.edu.vn" />
+                        <div class="form-text">Để trống rồi lưu = bỏ nhận email thông báo.</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-floppy-fill me-1"></i>Lưu email
+                        </button>
+                    </div>
+                </form>
+                @if (string.IsNullOrWhiteSpace(Model.Email))
+                {
+                    <div class="mt-3 fs-13" style="color:var(--warning);">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Đơn vị chưa có email — sẽ <strong>không nhận được</strong> thông báo văn bản qua email.
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-3 fs-13 text-success">
+                        <i class="bi bi-check-circle-fill me-1"></i>Đang nhận thông báo tại <strong>@Model.Email</strong>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people-fill text-info"></i>
+                <span class="card-title">Nhân sự phụ trách</span>
+            </div>
+            <div class="card-body">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl">Tên đơn vị</th>
+                        <td class="detail-val">@Model.TenDV @if (!string.IsNullOrEmpty(Model.TenTat)) { <span class="text-muted">(@Model.TenTat)</span> }</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Lãnh đạo đơn vị</th>
+                        <td class="detail-val">@(lanhDao != null ? lanhDao.HoTen : "— chưa gán —")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Văn thư đơn vị</th>
+                        <td class="detail-val">
+                            @if (vanThu.Any()) { @string.Join(", ", vanThu.Select(v => v.HoTen)) }
+                            else { <span class="text-muted">— chưa gán —</span> }
+                        </td>
+                    </tr>
+                </table>
+                <p class="fs-12 text-muted mt-2 mb-0">
+                    Đổi lãnh đạo / văn thư đơn vị: vào <a asp-action="PhanQuyenNoiBo">Phân quyền nội bộ</a>
+                    (lãnh đạo đơn vị), hoặc nhờ quản trị hệ thống.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

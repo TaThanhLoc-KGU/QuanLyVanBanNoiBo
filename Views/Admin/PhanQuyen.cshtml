@@ -1,0 +1,344 @@
+@{ ViewData["Title"] = "Phân quyền"; }
+@{
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new List<CongVan.Models.NhanVien>();
+    var donVi    = ViewBag.DonVi    as List<CongVan.Models.DonVi>    ?? new List<CongVan.Models.DonVi>();
+    var quyenXLs = ViewBag.QuyenXL  as List<CongVan.Models.QuyenXL>  ?? new List<CongVan.Models.QuyenXL>();
+    var vaiTros  = ViewBag.VaiTro   as List<CongVan.Models.VaiTro>   ?? new List<CongVan.Models.VaiTro>();
+    var chucNangDangKy = ViewBag.ChucNangDangKy as List<CongVan.Models.ChucNang> ?? new List<CongVan.Models.ChucNang>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-person-badge-fill me-2 text-primary"></i>Phân quyền</h1>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="bi bi-diagram-3-fill text-primary"></i>
+        <span class="card-title">Vai trò</span>
+        <span class="card-tools text-muted fs-12">Mỗi vai trò là 1 tập chức năng chi tiết — gán vai trò cho nhân viên ở phần bên dưới</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemVaiTro()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm vai trò
+            </button>
+        </div>
+    </div>
+    @if (!vaiTros.Any())
+    {
+        <div class="card-body"><span class="text-muted fs-13">Chưa có vai trò nào — mọi người vẫn dùng quyền cơ bản (Admin/Văn thư/Lãnh đạo) như trước.</span></div>
+    }
+    else
+    {
+        <div class="card-body p-0">
+            <div class="accordion" id="accVaiTro">
+            @foreach (var vt in vaiTros)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#vt-@vt.MaVaiTro">
+                            <strong>@vt.TenVaiTro</strong>
+                            <span class="text-muted fs-12 ms-2">@vt.SoNguoi người · <span id="vtTongCN_@vt.MaVaiTro">@vt.DanhSachChucNang.Count</span> chức năng</span>
+                        </button>
+                    </h2>
+                    <div id="vt-@vt.MaVaiTro" class="accordion-collapse collapse" data-bs-parent="#accVaiTro">
+                        <div class="accordion-body">
+                            <div class="perm-search">
+                                <i class="bi bi-search"></i>
+                                <input class="form-control form-control-sm" placeholder="Tìm chức năng theo tên..."
+                                       oninput="locChucNang(@vt.MaVaiTro, this.value)" />
+                            </div>
+                            @{ int nhomIdx = 0; }
+                            @foreach (var nhom in chucNangDangKy.GroupBy(c => c.NhomChucNang))
+                            {
+                                nhomIdx++;
+                                int soCap = nhom.Count(cn => vt.DanhSachChucNang.Contains(cn.Ma));
+                                <div class="perm-group" id="vtGrp_@(vt.MaVaiTro)_@nhomIdx" data-group-name="@nhom.Key.ToLower()">
+                                    <div class="d-flex align-items-center gap-2 mb-1 mt-2">
+                                        <span class="fw-600 fs-13">@nhom.Key</span>
+                                        <span class="perm-group-count @(soCap > 0 ? "has-grants" : "")" id="vtCnt_@(vt.MaVaiTro)_@nhomIdx">@soCap/@nhom.Count()</span>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        @foreach (var cn in nhom)
+                                        {
+                                            bool checkedCn = vt.DanhSachChucNang.Contains(cn.Ma);
+                                            <div class="col-md-6 col-lg-4 perm-item" data-search-text="@cn.Ten.ToLower()">
+                                                <label class="perm-row @(checkedCn ? "on" : "")" id="vtRow_@(vt.MaVaiTro)_@cn.Ma">
+                                                    <span class="perm-switch">
+                                                        <input type="checkbox" @(checkedCn ? "checked" : "")
+                                                               onchange="setVaiTroChucNang(@vt.MaVaiTro, '@cn.Ma', this.checked, @nhomIdx)" />
+                                                        <span class="track"></span><span class="thumb"></span>
+                                                    </span>
+                                                    <span class="perm-label">@cn.Ten</span>
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            <div id="vtNoMatch_@vt.MaVaiTro" class="text-muted fs-13 py-2" style="display:none;">Không tìm thấy chức năng nào khớp.</div>
+                            <button type="button" class="btn btn-xs btn-outline-danger mt-2" onclick="xoaVaiTro(@vt.MaVaiTro, '@Html.Raw(vt.TenVaiTro.Replace("'","\\'"))')">
+                                <i class="bi bi-trash me-1"></i>Xóa vai trò này
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="bi bi-person-fill text-primary"></i>
+        <span class="card-title">Chọn nhân viên để phân quyền</span>
+    </div>
+    <div class="card-body py-2">
+        <select id="pqNVSelect" class="form-select ts-select" style="max-width:420px;">
+            <option value="">-- Tìm và chọn nhân viên... --</option>
+            @foreach (var nv in nhanVien.OrderBy(n => n.HoTen))
+            {
+                <option value="@nv.MaNV" data-dv="@nv.MaDV">@nv.HoTen — @(donVi.FirstOrDefault(d=>d.MaDV==nv.MaDV)?.TenDV ?? "")</option>
+            }
+        </select>
+    </div>
+</div>
+
+<div class="card mb-3" id="cardVaiTroNV" style="display:none;">
+    <div class="card-header">
+        <i class="bi bi-diagram-3 text-primary"></i>
+        <span class="card-title">Vai trò được gán</span>
+    </div>
+    <div class="card-body" id="pqVaiTroContent"></div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-shield-fill-check text-primary"></i>
+        <span class="card-title" id="pqTenNV">Chọn nhân viên ở trên để xem phân quyền</span>
+    </div>
+    <div class="card-body" id="pqContent">
+        <div class="empty-state"><i class="bi bi-hand-index"></i><p>Chọn nhân viên ở trên</p></div>
+    </div>
+</div>
+
+<!-- Modal thêm vai trò -->
+<div class="modal fade" id="modalThemVaiTro" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm vai trò mới</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Tên vai trò</label>
+                <input id="vt_Ten" class="form-control mb-2" placeholder="VD: Biên tập viên thông báo" />
+                <label class="form-label">Ghi chú</label>
+                <input id="vt_GhiChu" class="form-control" placeholder="Không bắt buộc" />
+                <div id="themVaiTroError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuVaiTroMoi()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    setPQ: '@Url.Action("SetPhanQuyen", "Admin")',
+    getPQ: '@Url.Action("GetPhanQuyen", "Admin")',
+    themVaiTro: '@Url.Action("ThemVaiTro", "Admin")',
+    xoaVaiTro: '@Url.Action("XoaVaiTro", "Admin")',
+    setVaiTroChucNang: '@Url.Action("SetVaiTroChucNang", "Admin")',
+    setNVVaiTro: '@Url.Action("SetNhanVienVaiTro", "Admin")',
+    getNVVaiTro: '@Url.Action("GetVaiTroCuaNhanVien", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+var quyenXLData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    quyenXLs.Select(q => new { q.MaQuyen, q.TenQuyen })
+));
+var vaiTroData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    vaiTros.Select(v => new { v.MaVaiTro, v.TenVaiTro })
+));
+
+document.addEventListener('DOMContentLoaded', function() {
+    var pqSel = document.getElementById('pqNVSelect');
+    if (pqSel) {
+        pqSel.addEventListener('change', function() {
+            var val = this.value;
+            if (val) {
+                loadQuyen(parseInt(val));
+                loadVaiTroNV(parseInt(val));
+            } else {
+                document.getElementById('pqTenNV').textContent = 'Chọn nhân viên ở trên để xem phân quyền';
+                document.getElementById('pqContent').innerHTML = '<div class="empty-state"><i class="bi bi-hand-index"></i><p>Chọn nhân viên ở trên</p></div>';
+                document.getElementById('cardVaiTroNV').style.display = 'none';
+            }
+        });
+    }
+});
+
+function loadVaiTroNV(maNV) {
+    var box = document.getElementById('cardVaiTroNV');
+    if (vaiTroData.length === 0) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    document.getElementById('pqVaiTroContent').innerHTML = '<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm"></div></div>';
+    fetch(_U.getNVVaiTro + '?maNV=' + maNV)
+        .then(r => r.json())
+        .then(data => {
+            var html = '<div class="d-flex flex-wrap gap-2">';
+            vaiTroData.forEach(function(v) {
+                var checked = data.includes(v.MaVaiTro);
+                html += '<label class="perm-row ' + (checked ? 'on' : '') + '" style="width:auto;min-width:180px;" id="nvvtRow_' + v.MaVaiTro + '">'
+                    + '<span class="perm-switch"><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="setNVVaiTro(' + maNV + ',' + v.MaVaiTro + ',this.checked)"><span class="track"></span><span class="thumb"></span></span>'
+                    + '<span class="perm-label">' + v.TenVaiTro + '</span>'
+                    + '</label>';
+            });
+            html += '</div>';
+            document.getElementById('pqVaiTroContent').innerHTML = html;
+        });
+}
+
+function setNVVaiTro(maNV, maVaiTro, value) {
+    var row = document.getElementById('nvvtRow_' + maVaiTro);
+    if (row) row.classList.toggle('on', value);
+    post(_U.setNVVaiTro, { maNV: maNV, maVaiTro: maVaiTro, add: value }, function() {
+        showToast('Đã cập nhật vai trò.', 'success');
+    });
+}
+
+function loadQuyen(maNV) {
+    var sel = document.getElementById('pqNVSelect');
+    var opt = sel ? sel.querySelector('option[value="' + maNV + '"]') : null;
+    var maDV = opt ? (parseInt(opt.dataset.dv) || 1) : 1;
+    var ten = opt ? opt.text.split('—')[0].trim() : 'Nhân viên';
+    document.getElementById('pqTenNV').textContent = ten;
+    document.getElementById('pqContent').innerHTML = '<div class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm"></div></div>';
+
+    fetch(_U.getPQ + '?maNV=' + maNV)
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            var html = '<div class="perm-search"><i class="bi bi-search"></i>'
+                + '<input class="form-control form-control-sm" placeholder="Tìm quyền theo tên..." oninput="locQuyen(this.value)" /></div>'
+                + '<div class="row g-2" id="qxGrid">';
+            quyenXLData.forEach(function(q) {
+                var checked = data.includes(q.MaQuyen);
+                html += '<div class="col-md-6 col-lg-4 perm-item" data-search-text="' + (q.TenQuyen||'').toLowerCase() + '">'
+                    + '<label class="perm-row ' + (checked ? 'on' : '') + '" id="qxRow_' + q.MaQuyen + '">'
+                    + '<span class="perm-switch"><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="setQuyen(' + maNV + ',' + maDV + ',' + q.MaQuyen + ',this.checked)"><span class="track"></span><span class="thumb"></span></span>'
+                    + '<span class="perm-label">' + q.TenQuyen + '</span>'
+                    + '</label></div>';
+            });
+            html += '</div><div id="qxNoMatch" class="text-muted fs-13 py-2" style="display:none;">Không tìm thấy quyền nào khớp.</div>';
+            document.getElementById('pqContent').innerHTML = html;
+        });
+}
+
+function locQuyen(tuKhoa) {
+    tuKhoa = (tuKhoa || '').trim().toLowerCase();
+    var any = false;
+    document.querySelectorAll('#qxGrid .perm-item').forEach(function (item) {
+        var match = !tuKhoa || (item.dataset.searchText || '').indexOf(tuKhoa) !== -1;
+        item.classList.toggle('perm-group-hidden', !match);
+        if (match) any = true;
+    });
+    document.getElementById('qxNoMatch').style.display = any ? 'none' : '';
+}
+
+function setQuyen(maNV, maDV, maQuyen, value) {
+    var row = document.getElementById('qxRow_' + maQuyen);
+    if (row) row.classList.toggle('on', value);
+    post(_U.setPQ, { MaNV: maNV, MaDV: maDV, MaQuyen: maQuyen, Add: value }, function() {
+        showToast('Đã cập nhật quyền.', 'success');
+    });
+}
+
+function moThemVaiTro() {
+    document.getElementById('vt_Ten').value = '';
+    document.getElementById('vt_GhiChu').value = '';
+    document.getElementById('themVaiTroError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalThemVaiTro')).show();
+}
+
+function luuVaiTroMoi() {
+    var ten = document.getElementById('vt_Ten').value.trim();
+    var ghiChu = document.getElementById('vt_GhiChu').value.trim();
+    var err = document.getElementById('themVaiTroError');
+    if (!ten) { err.textContent = 'Vui lòng nhập tên vai trò'; err.style.display = ''; return; }
+    post(_U.themVaiTro, { tenVaiTro: ten, ghiChu: ghiChu }, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalThemVaiTro')).hide();
+        showToast('Đã thêm vai trò mới.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) { err.textContent = msg || 'Lỗi khi lưu'; err.style.display = ''; });
+}
+
+function setVaiTroChucNang(maVaiTro, maChucNang, val, nhomIdx) {
+    var row = document.getElementById('vtRow_' + maVaiTro + '_' + maChucNang);
+    if (row) row.classList.toggle('on', val);
+    var cnt = document.getElementById('vtCnt_' + maVaiTro + '_' + nhomIdx);
+    if (cnt) {
+        var parts = cnt.textContent.split('/');
+        var da = parseInt(parts[0]) + (val ? 1 : -1);
+        cnt.textContent = da + '/' + parts[1];
+        cnt.classList.toggle('has-grants', da > 0);
+    }
+    var tong = document.getElementById('vtTongCN_' + maVaiTro);
+    if (tong) tong.textContent = parseInt(tong.textContent) + (val ? 1 : -1);
+    post(_U.setVaiTroChucNang, { maVaiTro: maVaiTro, maChucNang: maChucNang, add: val }, function() {
+        showToast('Đã cập nhật chức năng của vai trò.', 'success');
+    });
+}
+
+// Tìm theo tên chức năng — ẩn từng ô không khớp, ẩn cả nhóm nếu không còn ô nào khớp trong nhóm đó.
+function locChucNang(maVaiTro, tuKhoa) {
+    tuKhoa = (tuKhoa || '').trim().toLowerCase();
+    var accBody = document.getElementById('vt-' + maVaiTro);
+    if (!accBody) return;
+    var anyMatch = false;
+    accBody.querySelectorAll('.perm-group').forEach(function (grp) {
+        var visibleInGroup = 0;
+        grp.querySelectorAll('.perm-item').forEach(function (item) {
+            var match = !tuKhoa || (item.dataset.searchText || '').indexOf(tuKhoa) !== -1;
+            item.classList.toggle('perm-group-hidden', !match);
+            if (match) visibleInGroup++;
+        });
+        grp.classList.toggle('perm-group-hidden', visibleInGroup === 0);
+        if (visibleInGroup > 0) anyMatch = true;
+    });
+    document.getElementById('vtNoMatch_' + maVaiTro).style.display = anyMatch ? 'none' : '';
+}
+
+function xoaVaiTro(maVaiTro, ten) {
+    if (!confirm('Xóa vai trò "' + ten + '"? Mọi nhân viên đang được gán vai trò này sẽ mất các chức năng tương ứng.')) return;
+    post(_U.xoaVaiTro, { maVaiTro: maVaiTro }, function() {
+        showToast('Đã xóa vai trò.', 'success');
+        setTimeout(() => location.reload(), 700);
+    });
+}
+</script>
+}

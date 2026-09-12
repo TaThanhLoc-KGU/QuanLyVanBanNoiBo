@@ -1,0 +1,208 @@
+@{
+    ViewData["Title"] = "Cấu hình luồng duyệt";
+    var ds = ViewBag.DanhSach as List<CongVan.Models.LuongDuyet> ?? new();
+    var chucNang = ViewBag.ChucNang as List<CongVan.Models.ChucNang> ?? new();
+    var vaiTro = ViewBag.VaiTro as List<CongVan.Models.VaiTro> ?? new();
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-diagram-3-fill me-2 text-primary"></i>Cấu hình luồng duyệt / trình ký</h1>
+        <p class="page-header-sub">Định nghĩa sẵn các bước duyệt cho văn bản đi / văn bản điều hành. Khi trình ký, người dùng chọn 1 luồng, hệ thống tự sinh các bước.</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+        <button class="btn btn-sm btn-primary" onclick="moEditor(0)"><i class="bi bi-plus-lg me-1"></i>Thêm luồng</button>
+    </div>
+</div>
+
+@foreach (var l in ds)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <span class="card-title">
+                @l.Ten
+                <span class="sbadge sbadge-gray ms-1">@(l.LoaiVanBan == 2 ? "Văn bản đi" : "Văn bản điều hành")</span>
+                @if (l.MacDinh) { <span class="sbadge sbadge-primary ms-1">Mặc định</span> }
+                @if (!l.HienThi) { <span class="sbadge sbadge-warning ms-1">Đang ẩn</span> }
+            </span>
+            <div class="card-tools">
+                <button class="btn btn-xs btn-outline-primary" onclick='moEditor(@l.ID, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(l)))'><i class="bi bi-pencil"></i> Sửa</button>
+                <button class="btn btn-xs btn-outline-danger" onclick="xoaLuong(@l.ID)"><i class="bi bi-trash3"></i></button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (!string.IsNullOrEmpty(l.MoTa)) { <p class="fs-13 text-muted px-3 pt-2 mb-1">@l.MoTa</p> }
+            <table class="app-table">
+                <thead><tr><th style="width:50px;">Bước</th><th>Tên bước</th><th>Người duyệt</th><th style="width:110px;">Trả lại?</th><th style="width:110px;">Bước ký?</th></tr></thead>
+                <tbody>
+                @foreach (var b in l.DanhSachBuoc.OrderBy(x => x.ThuTu))
+                {
+                    <tr>
+                        <td class="num-cell">@b.ThuTu</td>
+                        <td>@b.TenBuoc</td>
+                        <td class="fs-13">@b.TenLoaiNguoiDuyet</td>
+                        <td>@(b.ChoPhepTraLai ? "✔" : "—")</td>
+                        <td>@(b.LaBuocKy ? "✔ (tải file đã ký)" : "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+@if (ds.Count == 0)
+{
+    <div class="card"><div class="empty-state"><i class="bi bi-diagram-3"></i><p>Chưa có luồng duyệt nào. Bấm "Thêm luồng".</p></div></div>
+}
+
+<!-- ── Editor modal ── -->
+<div class="modal fade" id="mdEditor" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h6 class="modal-title fw-700" id="edTitle">Luồng duyệt</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="edId" />
+                <div class="row g-2 mb-2">
+                    <div class="col-md-7"><label class="form-label">Tên luồng <span class="form-required">*</span></label>
+                        <input id="edTen" class="form-control" placeholder="VD: Trình ký văn bản đi (ĐV → VT trường → BGH)" /></div>
+                    <div class="col-md-5"><label class="form-label">Áp dụng cho</label>
+                        <select id="edLoai" class="form-select">
+                            <option value="2">Văn bản đi</option>
+                            <option value="3">Văn bản điều hành</option>
+                        </select></div>
+                    <div class="col-12"><label class="form-label">Mô tả</label><input id="edMoTa" class="form-control" /></div>
+                    <div class="col-12 d-flex gap-3">
+                        <label class="form-check"><input type="checkbox" id="edMacDinh" class="form-check-input" /> <span class="fs-13">Luồng mặc định cho loại này</span></label>
+                        <label class="form-check"><input type="checkbox" id="edHienThi" class="form-check-input" checked /> <span class="fs-13">Hiển thị (cho người dùng chọn)</span></label>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="fs-13">Các bước duyệt (theo thứ tự)</strong>
+                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="themBuoc()"><i class="bi bi-plus-lg"></i> Thêm bước</button>
+                </div>
+                <div id="edBuoc"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="luuLuong()"><i class="bi bi-floppy-fill me-1"></i>Lưu luồng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const CHUC_NANG = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chucNang.Select(c => new { c.Ma, c.Ten })));
+const VAI_TRO   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vaiTro.Select(v => new { id = v.MaVaiTro, ten = v.TenVaiTro })));
+const NHAN_VIEN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(nhanVien.Select(n => new { id = n.MaNV, ten = (n.HoNV + " " + n.TenNV).Trim() + (string.IsNullOrEmpty(n.TenDV) ? "" : " — " + n.TenDV) })));
+const LOAI_NGUOI_DUYET = [
+    [1, "Người trình (người soạn văn bản)"],
+    [2, "Lãnh đạo đơn vị của người trình"],
+    [3, "Người có chức năng…"],
+    [4, "Người thuộc vai trò…"],
+    [5, "Người cụ thể…"],
+    [6, "Ban Giám Hiệu (quyền 12)"],
+];
+
+function optionsFor(loai, cur) {
+    if (loai == 3) return CHUC_NANG.map(c => `<option value="${c.Ma}" ${c.Ma==cur?'selected':''}>${c.Ten} (${c.Ma})</option>`).join('');
+    if (loai == 4) return VAI_TRO.map(v => `<option value="${v.id}" ${v.id==cur?'selected':''}>${v.ten}</option>`).join('');
+    if (loai == 5) return NHAN_VIEN.map(n => `<option value="${n.id}" ${n.id==cur?'selected':''}>${n.ten}</option>`).join('');
+    return '';
+}
+
+function rowBuoc(b) {
+    b = b || { tenBuoc: '', loaiNguoiDuyet: 2, giaTri: '', choPhepTraLai: true, laBuocKy: false };
+    const needGiaTri = [3,4,5].includes(+b.loaiNguoiDuyet);
+    return `<div class="buoc-row card mb-2" style="border:1px solid var(--border);">
+      <div class="card-body p-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4"><label class="form-label fs-12 mb-1">Tên bước</label>
+            <input class="form-control form-control-sm b-ten" value="${(b.tenBuoc||'').replace(/"/g,'&quot;')}" placeholder="VD: Lãnh đạo đơn vị duyệt" /></div>
+          <div class="col-md-4"><label class="form-label fs-12 mb-1">Người duyệt</label>
+            <select class="form-select form-select-sm b-loai" onchange="doiLoai(this)">
+              ${LOAI_NGUOI_DUYET.map(x => `<option value="${x[0]}" ${x[0]==b.loaiNguoiDuyet?'selected':''}>${x[1]}</option>`).join('')}
+            </select></div>
+          <div class="col-md-4 b-giatri-wrap" style="${needGiaTri?'':'display:none'}">
+            <label class="form-label fs-12 mb-1">Chọn</label>
+            <select class="form-select form-select-sm b-giatri">${optionsFor(b.loaiNguoiDuyet, b.giaTri)}</select></div>
+          <div class="col-auto"><label class="form-check fs-12"><input type="checkbox" class="form-check-input b-tralai" ${b.choPhepTraLai?'checked':''}/> Cho phép trả lại</label></div>
+          <div class="col-auto"><label class="form-check fs-12"><input type="checkbox" class="form-check-input b-ky" ${b.laBuocKy?'checked':''}/> Là bước ký (tải file đã ký)</label></div>
+          <div class="col-auto ms-auto d-flex gap-1">
+            <button type="button" class="btn btn-xs btn-outline-secondary" onclick="moveBuoc(this,-1)">↑</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary" onclick="moveBuoc(this,1)">↓</button>
+            <button type="button" class="btn btn-xs btn-outline-danger" onclick="this.closest('.buoc-row').remove()">×</button>
+          </div>
+        </div>
+      </div></div>`;
+}
+function doiLoai(sel) {
+    const row = sel.closest('.buoc-row');
+    const loai = +sel.value;
+    const wrap = row.querySelector('.b-giatri-wrap');
+    const need = [3,4,5].includes(loai);
+    wrap.style.display = need ? '' : 'none';
+    if (need) row.querySelector('.b-giatri').innerHTML = optionsFor(loai, '');
+}
+function moveBuoc(btn, dir) {
+    const row = btn.closest('.buoc-row');
+    if (dir < 0 && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+    if (dir > 0 && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+}
+function themBuoc() { document.getElementById('edBuoc').insertAdjacentHTML('beforeend', rowBuoc()); }
+
+function moEditor(id, data) {
+    document.getElementById('edId').value = id || 0;
+    document.getElementById('edTitle').textContent = id ? 'Sửa luồng duyệt' : 'Thêm luồng duyệt';
+    document.getElementById('edTen').value = data?.Ten || '';
+    document.getElementById('edLoai').value = data?.LoaiVanBan || 2;
+    document.getElementById('edMoTa').value = data?.MoTa || '';
+    document.getElementById('edMacDinh').checked = !!data?.MacDinh;
+    document.getElementById('edHienThi').checked = data ? !!data.HienThi : true;
+    const box = document.getElementById('edBuoc');
+    box.innerHTML = '';
+    const buoc = (data?.DanhSachBuoc || []).sort((a,b)=>a.ThuTu-b.ThuTu);
+    if (buoc.length === 0) box.insertAdjacentHTML('beforeend', rowBuoc());
+    else buoc.forEach(b => box.insertAdjacentHTML('beforeend', rowBuoc({
+        tenBuoc: b.TenBuoc, loaiNguoiDuyet: b.LoaiNguoiDuyet, giaTri: b.GiaTri, choPhepTraLai: b.ChoPhepTraLai, laBuocKy: b.LaBuocKy
+    })));
+    new bootstrap.Modal(document.getElementById('mdEditor')).show();
+}
+
+function luuLuong() {
+    const ten = document.getElementById('edTen').value.trim();
+    if (!ten) { showToast('Nhập tên luồng.', 'error'); return; }
+    const buoc = [...document.querySelectorAll('#edBuoc .buoc-row')].map(r => ({
+        tenBuoc: r.querySelector('.b-ten').value.trim(),
+        loaiNguoiDuyet: +r.querySelector('.b-loai').value,
+        giaTri: r.querySelector('.b-giatri-wrap').style.display === 'none' ? null : r.querySelector('.b-giatri').value,
+        choPhepTraLai: r.querySelector('.b-tralai').checked,
+        laBuocKy: r.querySelector('.b-ky').checked
+    })).filter(b => b.tenBuoc);
+    if (buoc.length === 0) { showToast('Cần ít nhất 1 bước có tên.', 'error'); return; }
+    fetch('@Url.Action("LuuLuongDuyet")', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: +document.getElementById('edId').value,
+            ten, loaiVanBan: +document.getElementById('edLoai').value,
+            moTa: document.getElementById('edMoTa').value,
+            macDinh: document.getElementById('edMacDinh').checked,
+            hienThi: document.getElementById('edHienThi').checked,
+            buoc
+        })
+    }).then(r => r.json()).then(d => {
+        if (d.ok) location.reload();
+        else showToast(d.msg || 'Lỗi', 'error');
+    });
+}
+function xoaLuong(id) {
+    if (!confirm('Xóa luồng này? (Không ảnh hưởng chuỗi trình ký đang chạy)')) return;
+    fetch('@Url.Action("XoaLuongDuyet")?id=' + id, { method: 'POST' })
+        .then(r => r.json()).then(d => d.ok ? location.reload() : showToast('Lỗi', 'error'));
+}
+</script>
+}

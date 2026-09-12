@@ -1,0 +1,373 @@
+@{ ViewData["Title"] = "Đơn vị"; }
+@{
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new List<CongVan.Models.NhanVien>();
+    var donVi    = ViewBag.DonVi    as List<CongVan.Models.DonVi>    ?? new List<CongVan.Models.DonVi>();
+    var donViHD  = donVi.Where(d => !d.DaGiaiThe).OrderBy(d => d.STT).ToList();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-diagram-3-fill me-2 text-primary"></i>Đơn vị</h1>
+        <p class="page-header-sub">@donViHD.Count đơn vị đang hoạt động</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-warning" onclick="moGopDV()">
+            <i class="bi bi-diagram-2 me-1"></i>Gộp đơn vị
+        </button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalThemDV">
+            <i class="bi bi-plus-lg me-1"></i>Thêm đơn vị
+        </button>
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-3">
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon green" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-check-circle-fill"></i></div>
+        <div><div class="stat-label">Đang hoạt động</div><div class="stat-value" style="font-size:18px;">@donViHD.Count</div></div>
+    </div>
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon si-gray" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-archive-fill"></i></div>
+        <div><div class="stat-label">Đã giải thể</div><div class="stat-value" style="font-size:18px;color:var(--muted);">@(donVi.Count - donViHD.Count)</div></div>
+    </div>
+</div>
+
+<div class="tbl-wrap">
+    <table class="app-table" style="table-layout:fixed;min-width:640px;">
+        <colgroup>
+            <col style="width:44px;"><col><col style="width:80px;"><col style="width:60px;">
+            <col style="width:170px;"><col style="width:110px;"><col style="width:96px;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>STT</th><th>Tên đơn vị</th><th>Tên tắt</th><th>Loại</th>
+                <th>Lãnh đạo hiện tại</th><th>Tình trạng</th>
+                <th style="text-align:center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var dv in donVi.OrderBy(d => d.STT).ThenBy(d => d.TenDV))
+        {
+            var ldphong = nhanVien.FirstOrDefault(nv => nv.MaNV == (dv.MaNV_TDV ?? dv.MaNV_TheoDoiCV));
+            <tr id="dv_@dv.MaDV" style="@(dv.DaGiaiThe ? "opacity:.6;" : "")">
+                <td style="color:var(--muted);font-size:12px;">@dv.STT</td>
+                <td>
+                    <span style="font-weight:600;">@dv.TenDV</span>
+                    @if (dv.DaGiaiThe) {
+                        <span class="badge bg-secondary ms-1" style="font-size:10px;">Giải thể @dv.NgayGiaiThe?.ToString("MM/yyyy")</span>
+                    }
+                </td>
+                <td style="color:var(--muted);font-size:13px;">@dv.TenTat</td>
+                <td style="font-size:13px;">@dv.LoaiDV</td>
+                <td style="font-size:13px;">
+                    @(ldphong?.HoTen ?? "—")
+                    @if (ldphong?.DaNghiViec == true)
+                    {
+                        <span class="sbadge sbadge-gray" style="font-size:10px;">Đã nghỉ việc</span>
+                    }
+                </td>
+                <td>
+                    @if (dv.DaGiaiThe) {
+                        <span class="sbadge sbadge-gray">Đã giải thể</span>
+                    } else {
+                        <span class="badge-status done"><i class="bi bi-check-circle-fill"></i> Hoạt động</span>
+                    }
+                </td>
+                <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn btn-icon btn-outline-primary" style="width:28px;height:28px;" title="Sửa"
+                            onclick="moSuaDV(@dv.MaDV,'@Html.Raw(dv.TenDV.Replace("'","\\'"  ))','@(dv.TenTat ?? "")','@(dv.LoaiDV ?? "")',@(dv.STT ?? 99),@(dv.MaNV_TDV ?? dv.MaNV_TheoDoiCV ?? 0))">
+                        <i class="bi bi-pencil" style="font-size:12px;"></i>
+                    </button>
+                    @if (!dv.DaGiaiThe) {
+                        <button class="btn btn-icon btn-outline-danger ms-1" style="width:28px;height:28px;" title="Giải thể"
+                                onclick="giaiTheDV(@dv.MaDV,'@Html.Raw(dv.TenDV.Replace("'","\\'"  ))')">
+                            <i class="bi bi-archive" style="font-size:12px;"></i>
+                        </button>
+                    } else {
+                        <button class="btn btn-icon btn-outline-success ms-1" style="width:28px;height:28px;" title="Khôi phục"
+                                onclick="khoiPhucDV(@dv.MaDV,'@Html.Raw(dv.TenDV.Replace("'","\\'"  ))')">
+                            <i class="bi bi-arrow-counterclockwise" style="font-size:12px;"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+<p style="font-size:12px;color:var(--muted);margin-top:8px;">
+    <i class="bi bi-info-circle me-1"></i>Đơn vị giải thể được ẩn khỏi danh sách chọn nhưng dữ liệu văn bản vẫn được giữ nguyên.
+</p>
+
+<!-- Modal Thêm ĐV -->
+<div class="modal fade" id="modalThemDV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm đơn vị mới</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tên đơn vị <span class="text-danger">*</span></label>
+                    <input id="dvTenMoi" class="form-control" placeholder="Nhập tên đơn vị..." />
+                </div>
+                <div class="row g-2">
+                    <div class="col">
+                        <label class="form-label">Tên tắt</label>
+                        <input id="dvTatMoi" class="form-control" placeholder="VD: CNTT" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">STT</label>
+                        <input id="dvSTTMoi" type="number" class="form-control" value="99" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Loại DV</label>
+                        <select id="dvLoaiMoi" class="form-select">
+                            <option value="">--</option>
+                            <option value="P">P - Phòng</option>
+                            <option value="K">K - Khoa</option>
+                            <option value="TT">TT - Trung tâm</option>
+                            <option value="BGH">BGH</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="themDV()">Lưu đơn vị</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sửa ĐV -->
+<div class="modal fade" id="modalSuaDV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-pencil me-2 text-primary"></i>Cập nhật đơn vị</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="dvMaSua" />
+                <div class="mb-3">
+                    <label class="form-label">Tên đơn vị <span class="text-danger">*</span></label>
+                    <input id="dvTenSua" class="form-control" />
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col">
+                        <label class="form-label">Tên tắt</label>
+                        <input id="dvTatSua" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">STT</label>
+                        <input id="dvSTTSua" type="number" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Loại DV</label>
+                        <select id="dvLoaiSua" class="form-select">
+                            <option value="">--</option>
+                            <option value="P">P - Phòng</option>
+                            <option value="K">K - Khoa</option>
+                            <option value="TT">TT - Trung tâm</option>
+                            <option value="BGH">BGH</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label"><i class="bi bi-person-badge me-1 text-primary"></i>Lãnh đạo đơn vị</label>
+                    <select id="dvLDSua" class="form-select ts-select">
+                        <option value="0">-- Chưa chọn --</option>
+                        @foreach (var nv in nhanVien.OrderBy(n => n.HoTen))
+                        {
+                            <option value="@nv.MaNV">@nv.HoTen (@(nv.TenDV ?? "—"))</option>
+                        }
+                    </select>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Lãnh đạo phòng — hiển thị trong cột xử lý khi giao văn bản</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="suaDV()">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gộp ĐV -->
+<div class="modal fade" id="modalGopDV" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-diagram-2 me-2 text-warning"></i>Gộp đơn vị</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-warning py-2" style="font-size:13px;">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Các đơn vị nguồn sẽ bị <strong>giải thể</strong>, toàn bộ văn bản và nhân viên sẽ được chuyển sang đơn vị đích.
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-600">Đơn vị nguồn <span class="text-danger">*</span> <small class="text-muted">(sẽ bị gộp vào)</small></label>
+                    <div style="border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:10px;max-height:240px;overflow-y:auto;" id="gopNguonList">
+                        @foreach (var dv in donViHD.OrderBy(d => d.STT).ThenBy(d => d.TenDV))
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input gop-nguon-cb" type="checkbox" value="@dv.MaDV" id="gn_@dv.MaDV" onchange="updateGopDich()">
+                                <label class="form-check-label" for="gn_@dv.MaDV" style="font-size:13px;">
+                                    <strong>@(dv.TenTat ?? dv.TenDV)</strong> — @dv.TenDV
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-600">Đơn vị đích <span class="text-danger">*</span> <small class="text-muted">(giữ lại)</small></label>
+                    <select id="gopDichSel" class="form-select ts-select" onchange="updateGopNguon()">
+                        <option value="">-- Chọn đơn vị đích --</option>
+                        @foreach (var dv in donViHD.OrderBy(d => d.STT).ThenBy(d => d.TenDV))
+                        {
+                            <option value="@dv.MaDV">@dv.TenDV</option>
+                        }
+                    </select>
+                    <div id="gopPreview" class="mt-3" style="display:none;padding:10px;background:var(--success-bg);border-radius:var(--radius-sm);font-size:13px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+            <button type="button" class="btn btn-warning" onclick="thucHienGopDV()">
+                <i class="bi bi-diagram-2 me-1"></i>Xác nhận gộp
+            </button>
+        </div>
+    </div></div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    themDV:     '@Url.Action("ThemDonVi", "Admin")',
+    suaDV:      '@Url.Action("SuaDonVi", "Admin")',
+    giaiTheDV:  '@Url.Action("GiaiTheDonVi", "Admin")',
+    khoiPhucDV: '@Url.Action("KhoiPhucDonVi", "Admin")',
+    gopDV:      '@Url.Action("GopDonVi", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function moThemDV() {
+    document.getElementById('dvTenMoi').value = '';
+    document.getElementById('dvTatMoi').value = '';
+    document.getElementById('dvLoaiMoi').value = '';
+    document.getElementById('dvSTTMoi').value = '99';
+    new bootstrap.Modal(document.getElementById('modalThemDV')).show();
+}
+function themDV() {
+    var ten = document.getElementById('dvTenMoi').value.trim();
+    if (!ten) { alert('Vui lòng nhập tên đơn vị'); return; }
+    post(_U.themDV, {
+        TenDV: ten,
+        TenTat: document.getElementById('dvTatMoi').value.trim(),
+        LoaiDV: document.getElementById('dvLoaiMoi').value,
+        STT: parseInt(document.getElementById('dvSTTMoi').value) || 99
+    }, function() { location.reload(); }, function(msg) { alert(msg || 'Lỗi'); });
+}
+function moSuaDV(maDV, ten, tat, loai, stt, maNVLD) {
+    document.getElementById('dvMaSua').value = maDV;
+    document.getElementById('dvTenSua').value = ten;
+    document.getElementById('dvTatSua').value = tat;
+    document.getElementById('dvLoaiSua').value = loai;
+    document.getElementById('dvSTTSua').value = stt;
+    var sel = document.getElementById('dvLDSua');
+    if (sel.tomselect) sel.tomselect.setValue(maNVLD || '');
+    else sel.value = maNVLD || '';
+    new bootstrap.Modal(document.getElementById('modalSuaDV')).show();
+}
+function suaDV() {
+    var ten = document.getElementById('dvTenSua').value.trim();
+    if (!ten) { alert('Vui lòng nhập tên đơn vị'); return; }
+    var sel = document.getElementById('dvLDSua');
+    var maNVLD = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+    post(_U.suaDV, {
+        MaDV: parseInt(document.getElementById('dvMaSua').value),
+        TenDV: ten,
+        TenTat: document.getElementById('dvTatSua').value.trim(),
+        LoaiDV: document.getElementById('dvLoaiSua').value,
+        STT: parseInt(document.getElementById('dvSTTSua').value) || 99,
+        MaNV_TDV: parseInt(maNVLD) || 0
+    }, function() { location.reload(); }, function(msg) { alert(msg || 'Lỗi'); });
+}
+function giaiTheDV(maDV, ten) {
+    if (!confirm('Giải thể đơn vị "' + ten + '"? Đơn vị sẽ bị ẩn khỏi danh sách.')) return;
+    post(_U.giaiTheDV, { maDV: maDV }, function() { location.reload(); });
+}
+function khoiPhucDV(maDV, ten) {
+    if (!confirm('Khôi phục đơn vị "' + ten + '"?')) return;
+    post(_U.khoiPhucDV, { maDV: maDV }, function() { location.reload(); });
+}
+function moGopDV() {
+    document.querySelectorAll('.gop-nguon-cb').forEach(function(cb){ cb.checked = false; });
+    var sel = document.getElementById('gopDichSel');
+    if (sel.tomselect) sel.tomselect.setValue(''); else sel.value = '';
+    document.getElementById('gopPreview').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalGopDV')).show();
+}
+function updateGopDich() {
+    var dichSel = document.getElementById('gopDichSel');
+    var dichVal = dichSel.tomselect ? dichSel.tomselect.getValue() : dichSel.value;
+    var nguonChecked = Array.from(document.querySelectorAll('.gop-nguon-cb:checked')).map(cb => cb.value);
+    var prev = document.getElementById('gopPreview');
+    if (dichVal && nguonChecked.length > 0) {
+        var labels = nguonChecked.map(function(v){
+            var lbl = document.querySelector('label[for="gn_' + v + '"]');
+            return lbl ? lbl.textContent.trim() : v;
+        });
+        var dichLbl = dichSel.options[Array.from(dichSel.options).findIndex(o => o.value == dichVal)]?.text || dichVal;
+        prev.innerHTML = '<i class="bi bi-arrow-right-circle text-success me-1"></i><strong>' + labels.join(', ') + '</strong> → <strong>' + dichLbl + '</strong>';
+        prev.style.display = 'block';
+    } else {
+        prev.style.display = 'none';
+    }
+}
+function updateGopNguon() {
+    var dichSel = document.getElementById('gopDichSel');
+    var dichVal = dichSel.tomselect ? dichSel.tomselect.getValue() : dichSel.value;
+    document.querySelectorAll('.gop-nguon-cb').forEach(function(cb){
+        cb.disabled = (cb.value == dichVal);
+        if (cb.value == dichVal) cb.checked = false;
+    });
+    updateGopDich();
+}
+function thucHienGopDV() {
+    var nguonChecked = Array.from(document.querySelectorAll('.gop-nguon-cb:checked')).map(cb => cb.value);
+    var dichSel = document.getElementById('gopDichSel');
+    var dichVal = dichSel.tomselect ? dichSel.tomselect.getValue() : dichSel.value;
+    if (nguonChecked.length === 0) { alert('Vui lòng chọn ít nhất 1 đơn vị nguồn'); return; }
+    if (!dichVal) { alert('Vui lòng chọn đơn vị đích'); return; }
+    if (!confirm('Xác nhận gộp ' + nguonChecked.length + ' đơn vị? Thao tác này KHÔNG THỂ hoàn tác!')) return;
+    post(_U.gopDV, { maDVNguon: nguonChecked.join(','), maDVDich: parseInt(dichVal) },
+        function() { showToast('Gộp đơn vị thành công!', 'success'); setTimeout(function(){ location.reload(); }, 800); },
+        function(msg) { alert(msg || 'Lỗi khi gộp đơn vị'); });
+}
+</script>
+}

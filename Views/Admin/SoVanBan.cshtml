@@ -1,0 +1,307 @@
+@{ ViewData["Title"] = "Sổ văn bản"; }
+@{
+    var soCVs       = ViewBag.SoCV        as List<CongVan.Models.SoCV>        ?? new List<CongVan.Models.SoCV>();
+    var loaiVBs     = ViewBag.LoaiVB      as List<CongVan.Models.LoaiVB>      ?? new List<CongVan.Models.LoaiVB>();
+    var mauSoKyHieu = ViewBag.MauSoKyHieu as List<CongVan.Models.MauSoKyHieu> ?? new List<CongVan.Models.MauSoKyHieu>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-journal-bookmark-fill me-2 text-primary"></i>Sổ văn bản</h1>
+        <p class="page-header-sub">@soCVs.Count sổ</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="bi bi-journal-bookmark-fill text-primary"></i>
+        <span class="card-title">Danh sách sổ văn bản</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemSo()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm sổ mới
+            </button>
+        </div>
+    </div>
+    <table class="app-table">
+        <thead>
+            <tr>
+                <th>Tên sổ</th>
+                <th>Mô tả</th>
+                <th style="width:190px;text-align:center;">Đếm riêng theo loại VB</th>
+                <th style="width:70px;text-align:center;">Sửa</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var s in soCVs)
+        {
+            <tr>
+                <td class="fw-600">@s.TenSCV</td>
+                <td class="text-muted fs-13">@s.MoTa</td>
+                <td style="text-align:center;">
+                    <div class="form-check form-switch d-flex justify-content-center m-0">
+                        <input class="form-check-input" type="checkbox"
+                               @(s.DemRiengTheoLoai ? "checked" : "")
+                               onchange="setDemRiengTheoLoai(@s.MaSCV, this.checked)"
+                               style="cursor:pointer;width:36px;height:20px;" />
+                    </div>
+                    <div class="fs-12 text-muted mt-1">
+                        @(s.DemRiengTheoLoai ? "Mỗi loại có số riêng" : "Số chung cho cả sổ")
+                    </div>
+                </td>
+                <td style="text-align:center;">
+                    <button type="button" class="btn btn-icon btn-outline-primary"
+                            data-masco="@s.MaSCV" data-tenso="@s.TenSCV" data-mota="@s.MoTa" onclick="moSuaSo(this)">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-hash text-success"></i>
+        <span class="card-title">Mẫu số ký hiệu tự sinh</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemMauSo()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm mẫu số
+            </button>
+        </div>
+    </div>
+    <div class="card-body" style="border-bottom:1px solid var(--border);padding:10px 14px;font-size:12.5px;color:var(--muted);">
+        Mẫu chuỗi hỗ trợ các placeholder: <code>{STT}</code>, <code>{STT2}</code>, <code>{STT3}</code> (số thứ tự, đệm 0),
+        <code>{NAM}</code>, <code>{NAM2}</code> (năm 4/2 số), <code>{KyHieu}</code> (mã ký hiệu của loại văn bản).
+        Ví dụ: <code>{STT3}/{KyHieu}-VNKGU</code> → <code>005/QĐ-VNKGU</code>.
+        Khi nhập văn bản đi, hệ thống sẽ tự tính số kế tiếp và điền sẵn — không cần "mẫu" theo loại thì áp dụng mẫu mặc định của sổ.
+    </div>
+    @if (!mauSoKyHieu.Any())
+    {
+        <div class="card-body"><span class="text-muted fs-13">Chưa cấu hình mẫu số nào — văn bản đi sẽ phải tự nhập số ký hiệu như trước.</span></div>
+    }
+    else
+    {
+        <table class="app-table">
+            <thead>
+                <tr>
+                    <th>Sổ văn bản</th>
+                    <th>Loại văn bản</th>
+                    <th>Mẫu chuỗi</th>
+                    <th style="width:90px;text-align:center;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var m in mauSoKyHieu)
+            {
+                <tr>
+                    <td>@m.TenSCV</td>
+                    <td>@(m.TenLVB ?? "— Mặc định (mọi loại) —")</td>
+                    <td><code>@m.MauChuoi</code></td>
+                    <td style="text-align:center;white-space:nowrap;">
+                        <button type="button" class="btn btn-icon btn-outline-primary"
+                                data-masco="@m.MaSCV" data-malvb="@m.MaLVB" data-mauchuoi="@m.MauChuoi" onclick="moSuaMauSo(this)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-icon btn-outline-danger" onclick="xoaMauSo(@m.ID)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Modal thêm sổ văn bản mới -->
+<div class="modal fade" id="modalThemSo" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-success"></i><span id="themSoTitle">Thêm sổ văn bản mới</span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="so_MaSCV" value="0" />
+                <label class="form-label">Tên sổ</label>
+                <input id="so_TenSCV" class="form-control mb-2" placeholder="VD: Sổ công văn đi" />
+                <label class="form-label">Mô tả</label>
+                <input id="so_MoTa" class="form-control" placeholder="Mô tả (không bắt buộc)" />
+                <div id="themSoError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuSo()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thêm/sửa mẫu số ký hiệu -->
+<div class="modal fade" id="modalMauSo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-hash me-2 text-success"></i>Mẫu số ký hiệu</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2">
+                    <div class="col-sm-6">
+                        <label class="form-label">Sổ văn bản</label>
+                        <select id="mauso_MaSCV" class="form-select">
+                            @foreach (var s in soCVs)
+                            { <option value="@s.MaSCV">@s.TenSCV</option> }
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label">Loại văn bản</label>
+                        <select id="mauso_MaLVB" class="form-select">
+                            <option value="">— Mặc định (mọi loại) —</option>
+                            @foreach (var lv in loaiVBs.OrderBy(l => l.TenLVB))
+                            { <option value="@lv.MaLVB">@lv.TenLVB</option> }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Mẫu chuỗi</label>
+                        <input id="mauso_MauChuoi" class="form-control" placeholder="{STT3}/{KyHieu}-VNKGU" />
+                        <div class="form-text mt-1">
+                            Placeholder: <code>{STT}</code> <code>{STT2}</code> <code>{STT3}</code> <code>{NAM}</code> <code>{NAM2}</code> <code>{KyHieu}</code>
+                        </div>
+                    </div>
+                </div>
+                <div id="mauSoError" class="text-danger mt-2 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuMauSo()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    themSo:      '@Url.Action("ThemSoCV", "Admin")',
+    suaSo:       '@Url.Action("SuaSoCV", "Admin")',
+    setDemRieng: '@Url.Action("SetDemRiengTheoLoai", "Admin")',
+    themMauSo:   '@Url.Action("ThemMauSoKyHieu", "Admin")',
+    xoaMauSo:    '@Url.Action("XoaMauSoKyHieu", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function setDemRiengTheoLoai(maSCV, val) {
+    post(_U.setDemRieng, { maSCV: maSCV, val: val }, function() {
+        showToast('Đã cập nhật cách đếm số của sổ.', 'success');
+    });
+}
+
+function moThemSo() {
+    document.getElementById('themSoTitle').textContent = 'Thêm sổ văn bản mới';
+    document.getElementById('so_MaSCV').value = '0';
+    document.getElementById('so_TenSCV').value = '';
+    document.getElementById('so_MoTa').value = '';
+    document.getElementById('themSoError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalThemSo')).show();
+}
+
+function moSuaSo(btn) {
+    document.getElementById('themSoTitle').textContent = 'Sửa sổ văn bản';
+    document.getElementById('so_MaSCV').value = btn.dataset.masco;
+    document.getElementById('so_TenSCV').value = btn.dataset.tenso;
+    document.getElementById('so_MoTa').value = btn.dataset.mota || '';
+    document.getElementById('themSoError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalThemSo')).show();
+}
+
+function luuSo() {
+    var maSCV = document.getElementById('so_MaSCV').value;
+    var ten = document.getElementById('so_TenSCV').value.trim();
+    var mota = document.getElementById('so_MoTa').value.trim();
+    var err = document.getElementById('themSoError');
+    if (!ten) {
+        err.textContent = 'Vui lòng nhập tên sổ';
+        err.style.display = '';
+        return;
+    }
+    var url = (maSCV === '0') ? _U.themSo : _U.suaSo;
+    var data = (maSCV === '0') ? { tenSCV: ten, moTa: mota } : { maSCV: maSCV, tenSCV: ten, moTa: mota };
+    post(url, data, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalThemSo')).hide();
+        showToast('Đã lưu sổ văn bản.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) {
+        err.textContent = msg || 'Lỗi khi lưu, vui lòng thử lại';
+        err.style.display = '';
+    });
+}
+
+function moThemMauSo() {
+    document.getElementById('mauso_MaSCV').value = document.getElementById('mauso_MaSCV').options[0]?.value ?? '';
+    document.getElementById('mauso_MaLVB').value = '';
+    document.getElementById('mauso_MauChuoi').value = '';
+    document.getElementById('mauSoError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalMauSo')).show();
+}
+
+function moSuaMauSo(btn) {
+    document.getElementById('mauso_MaSCV').value = btn.dataset.masco;
+    document.getElementById('mauso_MaLVB').value = btn.dataset.malvb === 'null' || !btn.dataset.malvb ? '' : btn.dataset.malvb;
+    document.getElementById('mauso_MauChuoi').value = btn.dataset.mauchuoi;
+    document.getElementById('mauSoError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalMauSo')).show();
+}
+
+function luuMauSo() {
+    var maSCV = document.getElementById('mauso_MaSCV').value;
+    var maLVB = document.getElementById('mauso_MaLVB').value;
+    var mauChuoi = document.getElementById('mauso_MauChuoi').value.trim();
+    var err = document.getElementById('mauSoError');
+    if (!mauChuoi) {
+        err.textContent = 'Vui lòng nhập mẫu chuỗi';
+        err.style.display = '';
+        return;
+    }
+    post(_U.themMauSo, { maSCV: maSCV, maLVB: maLVB, mauChuoi: mauChuoi }, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalMauSo')).hide();
+        showToast('Đã lưu mẫu số ký hiệu.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) {
+        err.textContent = msg || 'Lỗi khi lưu, vui lòng thử lại';
+        err.style.display = '';
+    });
+}
+
+function xoaMauSo(id) {
+    if (!confirm('Xóa mẫu số ký hiệu này?')) return;
+    post(_U.xoaMauSo, { id: id }, function() {
+        showToast('Đã xóa mẫu số.', 'success');
+        setTimeout(() => location.reload(), 700);
+    });
+}
+</script>
+}

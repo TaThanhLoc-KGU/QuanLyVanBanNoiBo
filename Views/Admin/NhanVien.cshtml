@@ -1,0 +1,422 @@
+@{ ViewData["Title"] = "Nhân viên"; }
+@{
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new List<CongVan.Models.NhanVien>();
+    var donVi    = ViewBag.DonVi    as List<CongVan.Models.DonVi>    ?? new List<CongVan.Models.DonVi>();
+    var donViHD  = donVi.Where(d => !d.DaGiaiThe).OrderBy(d => d.STT).ToList();
+    int soDangLam = nhanVien.Count(n => !n.DaNghiViec);
+    int soNghiViec = nhanVien.Count(n => n.DaNghiViec);
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-people-fill me-2 text-primary"></i>Nhân viên</h1>
+        <p class="page-header-sub">@soDangLam đang làm việc@(soNghiViec > 0 ? $" — {soNghiViec} đã thôi việc/nghỉ việc" : "")</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <div class="staff-search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="staffSearch" class="form-control form-control-sm" placeholder="Tìm theo tên, tài khoản..." oninput="filterStaff()" />
+    </div>
+    <div class="form-check ms-2">
+        <input type="checkbox" class="form-check-input" id="chkShowNghiViec" onchange="filterStaff()" />
+        <label class="form-check-label fs-13" for="chkShowNghiViec">Hiện cả người đã thôi việc/nghỉ việc</label>
+    </div>
+    <button class="btn btn-sm btn-primary ms-auto" onclick="moThemNV()">
+        <i class="bi bi-person-plus-fill me-1"></i>Thêm nhân viên
+    </button>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <div style="min-width:220px;max-width:320px;">
+        <select id="deptSelect" class="form-select form-select-sm ts-select" onchange="onDeptChange(this.value)">
+            <option value="">Tất cả phòng / ban</option>
+            @foreach (var dv in donViHD)
+            {
+                <option value="@dv.MaDV">@dv.TenDV</option>
+            }
+        </select>
+    </div>
+    <span class="staff-count" id="staffCount">@soDangLam nhân viên</span>
+</div>
+
+<div class="tbl-wrap">
+    <table class="app-table" id="staffTable">
+        <thead>
+            <tr>
+                <th style="width:40px;">#</th>
+                <th>Họ tên</th>
+                <th>Tài khoản</th>
+                <th>Phòng / Ban</th>
+                <th>Email</th>
+                <th style="text-align:center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+        @{ int sttNV = 0; }
+        @foreach (var nv in nhanVien.OrderBy(n => n.MaDV).ThenBy(n => n.HoTen))
+        {
+            sttNV++;
+            var dvNV = donVi.FirstOrDefault(d => d.MaDV == nv.MaDV);
+            <tr data-dv="@nv.MaDV"
+                data-ten="@nv.HoTen.ToLower()"
+                data-acc="@(nv.Username?.ToLower() ?? "")"
+                data-nghiviec="@(nv.DaNghiViec ? "1" : "0")"
+                style="@(nv.DaNghiViec ? "opacity:.6;" : "")">
+                <td class="text-muted fs-12">@sttNV</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;">
+                            @(nv.HoTen.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?[..1].ToUpper() ?? "?")
+                        </div>
+                        <span class="fw-600">@nv.HoTen</span>
+                        @if (nv.DaNghiViec)
+                        {
+                            <span class="sbadge sbadge-gray" style="font-size:10.5px;" title="@(nv.LyDoNghiViec ?? "")">
+                                Đã nghỉ @nv.NgayNghiViec?.ToString("dd/MM/yyyy")
+                            </span>
+                        }
+                    </div>
+                </td>
+                <td><code style="font-size:12.5px;background:var(--bg);padding:2px 7px;border-radius:5px;">@nv.Username</code></td>
+                <td style="font-size:13px;color:var(--muted);">@dvNV?.TenDV</td>
+                <td style="font-size:12.5px;color:var(--muted);">@nv.Email</td>
+                <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline-primary me-1"
+                            onclick="moSuaNV(@nv.MaNV,'@Html.Raw((nv.HoNV).Replace("'","\\'"))','@Html.Raw((nv.TenNV).Replace("'","\\'"))','@(nv.Username ?? "")','@(nv.Email ?? "")',@nv.MaDV)"
+                            title="Chỉnh sửa">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-xs btn-outline-warning me-1"
+                            onclick="moDoiMK(@nv.MaNV,'@Html.Raw((nv.HoTen).Replace("'","\\'"))')"
+                            title="Đổi mật khẩu">
+                        <i class="bi bi-key"></i>
+                    </button>
+                    @if (nv.DaNghiViec)
+                    {
+                        <button class="btn btn-xs btn-outline-success me-1"
+                                onclick="khoiPhucNV(@nv.MaNV,'@Html.Raw((nv.HoTen).Replace("'","\\'"))')"
+                                title="Khôi phục — cho làm việc trở lại">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button class="btn btn-xs btn-outline-danger"
+                                onclick="xoaNV(@nv.MaNV,'@Html.Raw((nv.HoTen).Replace("'","\\'"))')"
+                                title="Xóa vĩnh viễn (chỉ được nếu không còn dữ liệu liên quan)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-xs btn-outline-danger"
+                                onclick="moNghiViecNV(@nv.MaNV,'@Html.Raw((nv.HoTen).Replace("'","\\'"))')"
+                                title="Thôi việc / nghỉ việc — ẩn khỏi danh sách chọn người">
+                            <i class="bi bi-person-dash"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+<div id="staffEmpty" class="empty-state" style="display:none;">
+    <i class="bi bi-person-slash"></i>
+    <p>Không tìm thấy nhân viên nào</p>
+</div>
+
+<!-- Modal Thêm NV -->
+<div class="modal fade" id="modalThemNV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Thêm nhân viên</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">Họ và tên đệm <span class="text-danger">*</span></label>
+                        <input id="them_HoNV" class="form-control" placeholder="Nguyễn Văn" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tên <span class="text-danger">*</span></label>
+                        <input id="them_TenNV" class="form-control" placeholder="A" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tài khoản <span class="text-danger">*</span></label>
+                        <input id="them_UserName" class="form-control" placeholder="nguyenvana" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                        <input id="them_MatKhau" type="password" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Email</label>
+                        <input id="them_Email" type="email" class="form-control" placeholder="email@vnkgu.edu.vn" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Phòng / Ban <span class="text-danger">*</span></label>
+                        <select id="them_MaDV" class="form-select">
+                            <option value="0">-- Chọn đơn vị --</option>
+                            @foreach (var dv in donViHD)
+                            {
+                                <option value="@dv.MaDV">@dv.TenDV</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="luuThemNV()">
+                    <i class="bi bi-check-lg me-1"></i>Lưu nhân viên
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sửa NV -->
+<div class="modal fade" id="modalSuaNV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-pencil me-2 text-primary"></i>Cập nhật nhân viên</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sua_MaNV" />
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">Họ và tên đệm <span class="text-danger">*</span></label>
+                        <input id="sua_HoNV" class="form-control" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tên <span class="text-danger">*</span></label>
+                        <input id="sua_TenNV" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tài khoản</label>
+                        <input id="sua_UserName" class="form-control" readonly />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Email</label>
+                        <input id="sua_Email" type="email" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Phòng / Ban</label>
+                        <select id="sua_MaDV" class="form-select">
+                            <option value="0">-- Chọn đơn vị --</option>
+                            @foreach (var dv in donViHD)
+                            {
+                                <option value="@dv.MaDV">@dv.TenDV</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="luuSuaNV()">
+                    <i class="bi bi-check-lg me-1"></i>Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Đổi MK -->
+<div class="modal fade" id="modalDoiMK" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-key me-2 text-warning"></i>Đặt lại mật khẩu</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="mk_MaNV" />
+                <p class="mb-2" style="font-size:13px;">Nhân viên: <strong id="mk_HoTen"></strong></p>
+                <label class="form-label">Mật khẩu mới <span class="text-danger">*</span></label>
+                <input id="mk_MK" type="password" class="form-control" placeholder="Nhập mật khẩu mới..." />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning btn-sm" onclick="luuDoiMK()">
+                    <i class="bi bi-key me-1"></i>Đặt lại
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thôi việc / Nghỉ việc -->
+<div class="modal fade" id="modalNghiViec" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-person-dash me-2 text-danger"></i>Thôi việc / Nghỉ việc</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="nv_MaNV" />
+                <p class="mb-2" style="font-size:13px;">Nhân viên: <strong id="nv_HoTen"></strong></p>
+                <p class="fs-12 text-muted">
+                    Người này sẽ bị ẩn khỏi mọi danh sách chọn người (giao việc, chọn lãnh đạo...) và không đăng nhập được
+                    nữa, nhưng dữ liệu cũ (văn bản, công việc đã tham gia...) vẫn giữ nguyên. Có thể "Khôi phục" bất cứ lúc nào.
+                </p>
+                <label class="form-label">Ngày nghỉ việc</label>
+                <input id="nv_Ngay" type="date" class="form-control mb-2" />
+                <label class="form-label">Lý do</label>
+                <input id="nv_LyDo" class="form-control" placeholder="Thôi việc, nghỉ hưu, chuyển công tác..." />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="luuNghiViecNV()">
+                    <i class="bi bi-person-dash me-1"></i>Xác nhận
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    themNV:    '@Url.Action("ThemNhanVien", "Admin")',
+    suaNV:     '@Url.Action("SuaNhanVien", "Admin")',
+    xoaNV:     '@Url.Action("XoaNhanVien", "Admin")',
+    doiMK:     '@Url.Action("DoiMatKhau", "Admin")',
+    nghiViec:  '@Url.Action("NghiViecNhanVien", "Admin")',
+    khoiPhuc:  '@Url.Action("KhoiPhucNhanVien", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+var _activeDept = '';
+function onDeptChange(val) { _activeDept = val; filterStaff(); }
+
+function filterStaff() {
+    var kw   = document.getElementById('staffSearch').value.toLowerCase().trim();
+    var showNghiViec = document.getElementById('chkShowNghiViec').checked;
+    var rows = document.querySelectorAll('#staffTable tbody tr');
+    var vis  = 0;
+    rows.forEach(function (row) {
+        var matchDept = !_activeDept || row.dataset.dv === _activeDept;
+        var matchKw   = !kw || row.dataset.ten.includes(kw) || row.dataset.acc.includes(kw);
+        var matchNV   = showNghiViec || row.dataset.nghiviec === '0';
+        var show      = matchDept && matchKw && matchNV;
+        row.style.display = show ? '' : 'none';
+        if (show) vis++;
+    });
+    document.getElementById('staffCount').textContent = vis + ' nhân viên';
+    var empty = document.getElementById('staffEmpty');
+    var wrap  = document.getElementById('staffTable').closest('.tbl-wrap');
+    if (empty) empty.style.display = vis === 0 ? 'block' : 'none';
+    if (wrap)  wrap.style.display  = vis === 0 ? 'none'  : '';
+}
+
+function moThemNV() {
+    ['them_HoNV','them_TenNV','them_UserName','them_MatKhau','them_Email'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('them_MaDV').value = '0';
+    new bootstrap.Modal(document.getElementById('modalThemNV')).show();
+}
+
+function luuThemNV() {
+    var data = {
+        HoNV:     document.getElementById('them_HoNV').value.trim(),
+        TenNV:    document.getElementById('them_TenNV').value.trim(),
+        UserName: document.getElementById('them_UserName').value.trim(),
+        MatKhau:  document.getElementById('them_MatKhau').value,
+        Email:    document.getElementById('them_Email').value.trim(),
+        MaDV:     document.getElementById('them_MaDV').value
+    };
+    if (!data.HoNV || !data.TenNV || !data.UserName || !data.MatKhau) { alert('Vui lòng điền đầy đủ thông tin bắt buộc.'); return; }
+    post(_U.themNV, data, function() { location.reload(); });
+}
+
+function moSuaNV(maNV, hoNV, tenNV, userName, email, maDV) {
+    document.getElementById('sua_MaNV').value    = maNV;
+    document.getElementById('sua_HoNV').value    = hoNV;
+    document.getElementById('sua_TenNV').value   = tenNV;
+    document.getElementById('sua_UserName').value= userName;
+    document.getElementById('sua_Email').value   = email;
+    document.getElementById('sua_MaDV').value    = maDV;
+    new bootstrap.Modal(document.getElementById('modalSuaNV')).show();
+}
+
+function luuSuaNV() {
+    var data = {
+        MaNV:     document.getElementById('sua_MaNV').value,
+        HoNV:     document.getElementById('sua_HoNV').value.trim(),
+        TenNV:    document.getElementById('sua_TenNV').value.trim(),
+        Email:    document.getElementById('sua_Email').value.trim(),
+        MaDV:     document.getElementById('sua_MaDV').value
+    };
+    if (!data.HoNV || !data.TenNV) { alert('Vui lòng nhập đầy đủ họ và tên.'); return; }
+    post(_U.suaNV, data, function() { location.reload(); });
+}
+
+function xoaNV(maNV, hoTen) {
+    if (!confirm('Xóa VĨNH VIỄN nhân viên "' + hoTen + '"?\nChỉ thực hiện được nếu không còn dữ liệu nào liên quan. Thao tác này không thể hoàn tác.')) return;
+    post(_U.xoaNV, { MaNV: maNV }, function() { location.reload(); });
+}
+
+function moNghiViecNV(maNV, hoTen) {
+    document.getElementById('nv_MaNV').value = maNV;
+    document.getElementById('nv_HoTen').textContent = hoTen;
+    document.getElementById('nv_Ngay').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('nv_LyDo').value = '';
+    new bootstrap.Modal(document.getElementById('modalNghiViec')).show();
+}
+
+function luuNghiViecNV() {
+    var data = {
+        maNV: document.getElementById('nv_MaNV').value,
+        ngayNghiViec: document.getElementById('nv_Ngay').value,
+        lyDo: document.getElementById('nv_LyDo').value.trim()
+    };
+    post(_U.nghiViec, data, function() { location.reload(); });
+}
+
+function khoiPhucNV(maNV, hoTen) {
+    if (!confirm('Khôi phục "' + hoTen + '" — cho làm việc trở lại?')) return;
+    post(_U.khoiPhuc, { maNV: maNV }, function() { location.reload(); });
+}
+
+function moDoiMK(maNV, hoTen) {
+    document.getElementById('mk_MaNV').value = maNV;
+    document.getElementById('mk_HoTen').textContent = hoTen;
+    document.getElementById('mk_MK').value = '';
+    new bootstrap.Modal(document.getElementById('modalDoiMK')).show();
+}
+
+function luuDoiMK() {
+    var mk = document.getElementById('mk_MK').value;
+    if (!mk) { alert('Vui lòng nhập mật khẩu mới.'); return; }
+    post(_U.doiMK, {
+        MaNV: document.getElementById('mk_MaNV').value, MatKhauMoi: mk
+    }, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalDoiMK')).hide();
+        showToast('Đã đặt lại mật khẩu thành công.', 'success');
+    });
+}
+</script>
+}

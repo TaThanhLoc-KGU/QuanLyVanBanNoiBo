@@ -1,0 +1,166 @@
+@{ ViewData["Title"] = "Loại văn bản"; }
+@{
+    var loaiVBs = ViewBag.LoaiVB as List<CongVan.Models.LoaiVB> ?? new List<CongVan.Models.LoaiVB>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-tags-fill me-2 text-primary"></i>Loại văn bản</h1>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-tags-fill text-primary"></i>
+        <span class="card-title">Loại văn bản — dùng chung cho văn bản đến, văn bản đi &amp; văn bản điều hành</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemLVB()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm loại văn bản mới
+            </button>
+        </div>
+    </div>
+    <div class="card-body" style="border-bottom:1px solid var(--border);padding:10px 14px;">
+        <div class="d-flex gap-2 align-items-center">
+            <div style="position:relative;min-width:200px;max-width:320px;">
+                <i class="bi bi-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
+                <input type="text" id="lvbSearch" class="form-control form-control-sm" style="padding-left:28px;" placeholder="Tìm loại văn bản..." oninput="filterLVB()" />
+            </div>
+            <span id="lvbCount" class="text-muted fs-12">@loaiVBs.Count loại</span>
+        </div>
+    </div>
+    <table class="app-table" id="lvbTable">
+        <thead>
+            <tr>
+                <th>Loại văn bản</th>
+                <th style="width:160px;">Mã ký hiệu</th>
+                <th style="width:130px;text-align:center;">Hiển thị</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var lvb in loaiVBs.OrderBy(l => l.TenLVB))
+        {
+            <tr data-ten="@(lvb.TenLVB?.ToLower() ?? "")">
+                <td>@lvb.TenLVB</td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="@lvb.KyHieu"
+                           placeholder="VD: QĐ, TB, KH"
+                           onchange="setKyHieuLVB(@lvb.MaLVB, this.value)" />
+                </td>
+                <td style="text-align:center;">
+                    <div class="form-check form-switch d-flex justify-content-center m-0">
+                        <input class="form-check-input" type="checkbox"
+                               @(lvb.HienThi ? "checked" : "")
+                               onchange="setHienThiLVB(@lvb.MaLVB, this.checked)"
+                               style="cursor:pointer;width:36px;height:20px;" />
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal thêm loại văn bản mới -->
+<div class="modal fade" id="modalThemLVB" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm loại văn bản mới</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Tên loại văn bản</label>
+                <input id="them_TenLVB" class="form-control mb-2" placeholder="VD: Quyết định" />
+                <label class="form-label">Mã ký hiệu</label>
+                <input id="them_KyHieuLVB" class="form-control" placeholder="VD: QĐ" />
+                <div id="themLVBError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuLVBMoi()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    setHienThiLVB: '@Url.Action("SetHienThiLoaiVB", "Admin")',
+    setKyHieuLVB:  '@Url.Action("SetKyHieuLoaiVB", "Admin")',
+    themLVB:       '@Url.Action("ThemLoaiVB", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function filterLVB() {
+    var kw   = document.getElementById('lvbSearch').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('#lvbTable tbody tr');
+    var vis  = 0;
+    rows.forEach(function (row) {
+        var show = !kw || row.dataset.ten.includes(kw);
+        row.style.display = show ? '' : 'none';
+        if (show) vis++;
+    });
+    document.getElementById('lvbCount').textContent = vis + ' loại';
+}
+
+function setHienThiLVB(maLVB, val) {
+    post(_U.setHienThiLVB, { MaLVB: maLVB, HienThi: val }, function() {
+        showToast('Đã cập nhật hiển thị loại văn bản.', 'success');
+    });
+}
+
+function setKyHieuLVB(maLVB, kyHieu) {
+    post(_U.setKyHieuLVB, { MaLVB: maLVB, KyHieu: kyHieu }, function() {
+        showToast('Đã cập nhật mã ký hiệu.', 'success');
+    });
+}
+
+function moThemLVB() {
+    document.getElementById('them_TenLVB').value = '';
+    document.getElementById('them_KyHieuLVB').value = '';
+    document.getElementById('themLVBError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalThemLVB')).show();
+    setTimeout(() => document.getElementById('them_TenLVB').focus(), 300);
+}
+
+function luuLVBMoi() {
+    var ten = document.getElementById('them_TenLVB').value.trim();
+    var kyHieu = document.getElementById('them_KyHieuLVB').value.trim();
+    var err = document.getElementById('themLVBError');
+    if (!ten) {
+        err.textContent = 'Vui lòng nhập tên loại văn bản';
+        err.style.display = '';
+        return;
+    }
+    post(_U.themLVB, { TenLVB: ten, KyHieu: kyHieu }, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalThemLVB')).hide();
+        showToast('Đã thêm loại văn bản mới. Tải lại trang để thấy trong danh sách.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) {
+        err.textContent = msg || 'Lỗi khi lưu, vui lòng thử lại';
+        err.style.display = '';
+    });
+}
+</script>
+}

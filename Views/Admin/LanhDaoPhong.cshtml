@@ -1,0 +1,139 @@
+@{ ViewData["Title"] = "Lãnh đạo phòng & Email"; }
+@{
+    var nhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new List<CongVan.Models.NhanVien>();
+    var donVi    = ViewBag.DonVi    as List<CongVan.Models.DonVi>    ?? new List<CongVan.Models.DonVi>();
+    var donViHD  = donVi.Where(d => !d.DaGiaiThe).OrderBy(d => d.STT).ToList();
+    var vanThuMap = ViewBag.VanThuDonViMap as Dictionary<byte, List<short>> ?? new Dictionary<byte, List<short>>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-person-workspace me-2 text-primary"></i>Lãnh đạo phòng &amp; Email</h1>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-person-workspace text-primary"></i>
+        <span class="card-title">Phân công lãnh đạo &amp; Email thông báo theo phòng / ban</span>
+        <span class="card-tools text-muted fs-12">Email phòng ban dùng để nhận thông báo văn bản đến</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="app-table">
+            <thead>
+                <tr>
+                    <th>Đơn vị</th>
+                    <th style="width:220px;">Lãnh đạo phụ trách</th>
+                    <th style="width:240px;">Văn thư đơn vị <small class="text-muted fw-normal">(nhiều người)</small></th>
+                    <th>Email thông báo <small class="text-muted fw-normal">(nhiều địa chỉ cách nhau bởi dấu phẩy)</small></th>
+                    <th style="width:90px;text-align:center;">Lưu</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var dv in donViHD)
+            {
+                var vanThuIds = vanThuMap.TryGetValue(dv.MaDV, out var vt) ? vt : new List<short>();
+                <tr>
+                    <td class="fw-600">@dv.TenDV</td>
+                    <td>
+                        <select id="ld_@dv.MaDV" class="form-select form-select-sm ts-select" onchange="setLanhDao(@dv.MaDV, this.value)">
+                            <option value="0">-- Chưa có --</option>
+                            @foreach (var nv in nhanVien.Where(n => !n.DaNghiViec || n.MaNV == dv.MaNV_TDV).OrderBy(n => n.HoTen))
+                            {
+                                string nhan = nv.DaNghiViec ? " (đã nghỉ việc)" : "";
+                                @if (dv.MaNV_TDV == nv.MaNV) { <option value="@nv.MaNV" selected>@nv.HoTen@nhan</option> }
+                                else { <option value="@nv.MaNV">@nv.HoTen@nhan</option> }
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select id="vt_@dv.MaDV" class="form-select form-select-sm ts-select" multiple onchange="setVanThuDV(@dv.MaDV, this)">
+                            @foreach (var nv in nhanVien.Where(n => !n.DaNghiViec || vanThuIds.Contains(n.MaNV)).OrderBy(n => n.HoTen))
+                            {
+                                string nhan = nv.DaNghiViec ? " (đã nghỉ việc)" : "";
+                                @if (vanThuIds.Contains(nv.MaNV)) { <option value="@nv.MaNV" selected>@nv.HoTen@nhan</option> }
+                                else { <option value="@nv.MaNV">@nv.HoTen@nhan</option> }
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <input type="email" id="email_dv_@dv.MaDV"
+                               class="form-control form-control-sm"
+                               placeholder="email@vnkgu.edu.vn"
+                               value="@(dv.Email ?? "")"
+                               multiple />
+                    </td>
+                    <td style="text-align:center;">
+                        <button class="btn btn-xs btn-outline-primary"
+                                onclick="saveEmailDV(@dv.MaDV)"
+                                title="Lưu email">
+                            <i class="bi bi-floppy"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+<p class="fs-12 text-muted mt-2">
+    <i class="bi bi-info-circle me-1"></i>"Văn thư đơn vị" chỉ xử lý được văn bản đến của đúng (các) đơn vị được gán ở đây —
+    khác với "Lãnh đạo phụ trách" (1 người/đơn vị, thêm quyền chỉ đạo &amp; phân công) và vai trò "Văn thư" chung (toàn trường,
+    quản lý ở trang Phân quyền).
+</p>
+
+@section Scripts {
+<script>
+var _U = {
+    setLD:     '@Url.Action("SetLanhDaoPhong", "Admin")',
+    setEmail:  '@Url.Action("SetEmailDonVi", "Admin")',
+    setVanThu: '@Url.Action("SetVanThuDonVi", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function setLanhDao(maDV, maNV) {
+    post(_U.setLD, { MaDV: maDV, MaNV_TDV: maNV }, function() {
+        showToast('Đã cập nhật lãnh đạo phòng.', 'success');
+    });
+}
+
+var _vanThuPrev = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    donViHD.ToDictionary(dv => dv.MaDV.ToString(), dv => (vanThuMap.TryGetValue(dv.MaDV, out var vt) ? vt : new List<short>()).Select(x => x.ToString()).ToList())));
+
+function setVanThuDV(maDV, sel) {
+    var current = (sel.tomselect ? sel.tomselect.getValue() : Array.from(sel.selectedOptions).map(o => o.value)).map(String);
+    var prev = _vanThuPrev[maDV] || [];
+    var added   = current.filter(v => prev.indexOf(v) === -1);
+    var removed = prev.filter(v => current.indexOf(v) === -1);
+    added.forEach(maNV => post(_U.setVanThu, { maDV: maDV, maNV: maNV, add: true }));
+    removed.forEach(maNV => post(_U.setVanThu, { maDV: maDV, maNV: maNV, add: false }));
+    _vanThuPrev[maDV] = current;
+    if (added.length || removed.length) showToast('Đã cập nhật văn thư đơn vị.', 'success');
+}
+
+function saveEmailDV(maDV) {
+    var email = document.getElementById('email_dv_' + maDV).value.trim();
+    post(_U.setEmail, { MaDV: maDV, Email: email }, function() {
+        showToast('Đã lưu email phòng ban.', 'success');
+    });
+}
+</script>
+}

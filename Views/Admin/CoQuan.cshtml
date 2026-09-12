@@ -1,0 +1,96 @@
+@{ ViewData["Title"] = "Cơ quan ban hành"; }
+@{
+    var coQuans = ViewBag.CoQuan as List<CongVan.Models.CoQuan> ?? new List<CongVan.Models.CoQuan>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-building me-2 text-primary"></i>Cơ quan ban hành</h1>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-building text-primary"></i>
+        <span class="card-title">Cơ quan ban hành — hiển thị trên danh sách</span>
+        <span class="card-tools text-muted fs-12">Bật/tắt để ẩn khỏi dropdown nhập văn bản</span>
+    </div>
+    <div class="card-body" style="border-bottom:1px solid var(--border);padding:10px 14px;">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div style="position:relative;flex:1;min-width:200px;max-width:400px;">
+                <i class="bi bi-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
+                <input type="text" id="cqSearch" class="form-control form-control-sm" style="padding-left:28px;" placeholder="Tìm cơ quan..." oninput="filterCQ()" />
+            </div>
+            <span id="cqCount" class="text-muted fs-12">@coQuans.Count cơ quan</span>
+        </div>
+    </div>
+    <div style="max-height:520px;overflow-y:auto;">
+    <table class="app-table" id="cqTable">
+        <thead>
+            <tr>
+                <th>Cơ quan ban hành</th>
+                <th style="width:130px;text-align:center;">Hiển thị</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var cq in coQuans.OrderBy(c => c.TenCQ))
+        {
+            <tr data-ten="@(cq.TenCQ?.ToLower() ?? "")">
+                <td>@cq.TenCQ</td>
+                <td style="text-align:center;">
+                    <div class="form-check form-switch d-flex justify-content-center m-0">
+                        <input class="form-check-input" type="checkbox"
+                               @(cq.HienThi ? "checked" : "")
+                               onchange="setHienThiCQ(@cq.MaCQ, this.checked)"
+                               style="cursor:pointer;width:36px;height:20px;" />
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = { setHienThiCQ: '@Url.Action("SetHienThiCoQuan", "Admin")' };
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function filterCQ() {
+    var kw   = document.getElementById('cqSearch').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('#cqTable tbody tr');
+    var vis  = 0;
+    rows.forEach(function (row) {
+        var show = !kw || row.dataset.ten.includes(kw);
+        row.style.display = show ? '' : 'none';
+        if (show) vis++;
+    });
+    document.getElementById('cqCount').textContent = vis + ' cơ quan';
+}
+
+function setHienThiCQ(maCQ, val) {
+    post(_U.setHienThiCQ, { MaCQ: maCQ, HienThi: val }, function() {
+        showToast('Đã cập nhật hiển thị cơ quan.', 'success');
+    });
+}
+</script>
+}

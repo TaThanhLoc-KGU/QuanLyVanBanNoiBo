@@ -1,0 +1,208 @@
+@{ ViewData["Title"] = "Ban Giám Hiệu"; }
+@{
+    var nhanVien    = ViewBag.NhanVien  as List<CongVan.Models.NhanVien>  ?? new List<CongVan.Models.NhanVien>();
+    var donVi       = ViewBag.DonVi     as List<CongVan.Models.DonVi>     ?? new List<CongVan.Models.DonVi>();
+    var phanQuyenAll= ViewBag.PhanQuyen as List<CongVan.Models.PhanQuyen> ?? new List<CongVan.Models.PhanQuyen>();
+    var bghMaNVs    = phanQuyenAll.Where(pq => pq.MaQuyen == 12).Select(pq => pq.MaNV).Distinct().ToHashSet();
+    var bghMembers  = nhanVien.Where(nv => bghMaNVs.Contains(nv.MaNV)).OrderBy(n => n.HoTen).ToList();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-person-badge me-2 text-primary"></i>Ban Giám Hiệu</h1>
+        <p class="page-header-sub">@bghMembers.Count thành viên</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <span style="font-size:13px;color:var(--muted);">Danh sách thành viên Ban Giám Hiệu (có quyền chỉ đạo văn bản)</span>
+    <button class="btn btn-sm btn-primary ms-auto" onclick="moThemBGH()">
+        <i class="bi bi-person-plus-fill me-1"></i>Thêm thành viên BGH
+    </button>
+</div>
+<div class="tbl-wrap">
+    <table class="app-table" id="bghTable">
+        <thead>
+            <tr>
+                <th style="width:40px;">#</th>
+                <th>Họ tên</th>
+                <th>Tài khoản</th>
+                <th>Email</th>
+                <th style="text-align:center;width:110px;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody id="bghTbody">
+        @{ int sttBGH = 0; }
+        @foreach (var nv in bghMembers)
+        {
+            sttBGH++;
+            <tr id="bgh_@nv.MaNV">
+                <td class="text-muted fs-12">@sttBGH</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:var(--warning);color:#fff;">
+                            @(nv.HoTen.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?[..1].ToUpper() ?? "?")
+                        </div>
+                        <span class="fw-600">@nv.HoTen</span>
+                        @if (nv.DaNghiViec)
+                        {
+                            <span class="sbadge sbadge-gray" style="font-size:10.5px;">Đã nghỉ việc</span>
+                        }
+                    </div>
+                </td>
+                <td><code style="font-size:12.5px;background:var(--bg);padding:2px 7px;border-radius:5px;">@nv.Username</code></td>
+                <td style="font-size:12.5px;color:var(--muted);">@nv.Email</td>
+                <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline-primary me-1"
+                            onclick="moSuaBGH(@nv.MaNV,'@Html.Raw((nv.HoNV).Replace("'","\\'"))','@Html.Raw((nv.TenNV).Replace("'","\\'"))','@(nv.Email ?? "")')"
+                            title="Chỉnh sửa">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-xs btn-outline-danger"
+                            onclick="xoaBGH(@nv.MaNV,'@Html.Raw((nv.HoTen).Replace("'","\\'"))')"
+                            title="Xóa khỏi BGH">
+                        <i class="bi bi-person-dash"></i>
+                    </button>
+                </td>
+            </tr>
+        }
+        @if (!bghMembers.Any())
+        {
+            <tr><td colspan="5" class="text-center text-muted py-3">Chưa có thành viên BGH nào</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Thêm BGH -->
+<div class="modal fade" id="modalThemBGH" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Thêm thành viên Ban Giám Hiệu</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Chọn nhân viên</label>
+                <select id="bghNVSelect" class="form-select ts-select">
+                    <option value="">-- Tìm và chọn nhân viên --</option>
+                    @foreach (var nv in nhanVien.Where(n => !bghMaNVs.Contains(n.MaNV) && !n.DaNghiViec).OrderBy(n => n.HoTen))
+                    {
+                        <option value="@nv.MaNV" data-dv="@nv.MaDV">@nv.HoTen — @(donVi.FirstOrDefault(d=>d.MaDV==nv.MaDV)?.TenDV ?? "")</option>
+                    }
+                </select>
+                <div class="form-text">Nhân viên được chọn sẽ được cấp quyền "Lãnh đạo chỉ đạo" và xuất hiện trong danh sách BGH chỉ đạo khi nhập văn bản.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="themBGH()"><i class="bi bi-check-lg me-1"></i>Thêm vào BGH</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sửa BGH -->
+<div class="modal fade" id="modalSuaBGH" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-pencil me-2 text-primary"></i>Cập nhật thông tin BGH</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="suaBGH_MaNV" />
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Họ <span class="text-danger">*</span></label>
+                        <input id="suaBGH_HoNV" class="form-control" placeholder="Nguyễn" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tên <span class="text-danger">*</span></label>
+                        <input id="suaBGH_TenNV" class="form-control" placeholder="Văn A" />
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Email</label>
+                    <input id="suaBGH_Email" type="email" class="form-control" placeholder="email@vnkgu.edu.vn" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="luuSuaBGH()"><i class="bi bi-check-lg me-1"></i>Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    setPQ: '@Url.Action("SetPhanQuyen", "Admin")',
+    suaNV: '@Url.Action("SuaNhanVien", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function moThemBGH() {
+    new bootstrap.Modal(document.getElementById('modalThemBGH')).show();
+}
+
+function themBGH() {
+    var sel = document.getElementById('bghNVSelect');
+    var maNV = sel?.tomselect ? sel.tomselect.getValue() : sel?.value;
+    if (!maNV) { alert('Vui lòng chọn nhân viên'); return; }
+    var opt = sel.querySelector('option[value="' + maNV + '"]');
+    var maDV = opt ? (parseInt(opt.dataset.dv) || 1) : 1;
+    post(_U.setPQ, { MaNV: maNV, MaDV: maDV, MaQuyen: 12, Add: true }, function() {
+        showToast('Đã thêm vào Ban Giám Hiệu.', 'success');
+        setTimeout(function(){ location.reload(); }, 800);
+    });
+}
+
+function moSuaBGH(maNV, hoNV, tenNV, email) {
+    document.getElementById('suaBGH_MaNV').value = maNV;
+    document.getElementById('suaBGH_HoNV').value = hoNV;
+    document.getElementById('suaBGH_TenNV').value = tenNV;
+    document.getElementById('suaBGH_Email').value = email;
+    new bootstrap.Modal(document.getElementById('modalSuaBGH')).show();
+}
+
+function luuSuaBGH() {
+    var maNV  = document.getElementById('suaBGH_MaNV').value;
+    var hoNV  = document.getElementById('suaBGH_HoNV').value.trim();
+    var tenNV = document.getElementById('suaBGH_TenNV').value.trim();
+    var email = document.getElementById('suaBGH_Email').value.trim();
+    if (!hoNV || !tenNV) { alert('Họ và tên không được để trống'); return; }
+    post(_U.suaNV, { MaNV: maNV, HoNV: hoNV, TenNV: tenNV, Email: email, MaDV: 0 }, function() {
+        showToast('Đã cập nhật thông tin.', 'success');
+        setTimeout(function(){ location.reload(); }, 800);
+    });
+}
+
+function xoaBGH(maNV, ten) {
+    if (!confirm('Xóa "' + ten + '" khỏi Ban Giám Hiệu?\n\nNhân viên vẫn được giữ nguyên, chỉ thu hồi quyền chỉ đạo BGH.')) return;
+    post(_U.setPQ, { MaNV: maNV, MaDV: 0, MaQuyen: 12, Add: false }, function() {
+        var row = document.getElementById('bgh_' + maNV);
+        if (row) row.remove();
+        showToast('Đã xóa khỏi Ban Giám Hiệu.', 'success');
+    });
+}
+</script>
+}

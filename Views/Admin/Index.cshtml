@@ -1,0 +1,58 @@
+@{ ViewData["Title"] = "Quản trị hệ thống"; }
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-shield-fill-gear me-2 text-primary"></i>Quản trị hệ thống</h1>
+        <p class="page-header-sub">Quản lý nhân viên, phân quyền và danh mục dữ liệu</p>
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-4 flex-wrap">
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-people-fill"></i></div>
+        <div><div class="stat-label">Nhân viên</div><div class="stat-value" style="font-size:18px;">@ViewBag.SoNhanVien</div></div>
+    </div>
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon green" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-diagram-3-fill"></i></div>
+        <div><div class="stat-label">Đơn vị hoạt động</div><div class="stat-value" style="font-size:18px;">@ViewBag.SoDonViHD</div></div>
+    </div>
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-person-badge"></i></div>
+        <div><div class="stat-label">Ban Giám Hiệu</div><div class="stat-value" style="font-size:18px;">@ViewBag.SoBGH</div></div>
+    </div>
+    <div class="stat-card" style="padding:10px 14px;gap:10px;flex:0 0 auto;">
+        <div class="stat-icon" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-journal-bookmark-fill"></i></div>
+        <div><div class="stat-label">Sổ văn bản</div><div class="stat-value" style="font-size:18px;">@ViewBag.SoSoVanBan</div></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    @{
+        var muc = new (string icon, string tieuDe, string moTa, string action)[] {
+            ("bi-people-fill", "Nhân viên", "Thêm/sửa/xóa tài khoản nhân viên", "NhanVien"),
+            ("bi-person-badge-fill", "Phân quyền", "Cấp/thu hồi quyền theo từng nhân viên", "PhanQuyen"),
+            ("bi-person-workspace", "Lãnh đạo phòng & Email", "Phân công lãnh đạo và email nhận thông báo theo đơn vị", "LanhDaoPhong"),
+            ("bi-person-badge", "Ban Giám Hiệu", "Danh sách thành viên có quyền chỉ đạo xử lý văn bản", "BanGiamHieu"),
+            ("bi-diagram-3-fill", "Đơn vị", "Thêm/sửa/giải thể/gộp đơn vị", "DonVi"),
+            ("bi-building", "Cơ quan ban hành", "Danh mục cơ quan hiển thị khi nhập văn bản đến", "CoQuan"),
+            ("bi-tags-fill", "Loại văn bản", "Danh mục loại văn bản dùng chung cho cả 3 sổ", "LoaiVanBan"),
+            ("bi-journal-bookmark-fill", "Sổ văn bản", "Quản lý sổ và mẫu số ký hiệu tự sinh", "SoVanBan"),
+            ("bi-envelope-fill", "Cấu hình Email", "Cài đặt SMTP gửi thông báo", "CauHinhEmail"),
+            ("bi-key-fill", "API Key đơn vị", "Cấp/thu hồi API Key cho web riêng của đơn vị gọi vào", "ApiKey"),
+        };
+    }
+    @foreach (var m in muc)
+    {
+        <div class="col-sm-6 col-lg-4">
+            <a asp-action="@m.action" class="card h-100" style="text-decoration:none;color:inherit;display:block;padding:18px;">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="stat-icon" style="width:40px;height:40px;font-size:18px;flex-shrink:0;"><i class="bi @m.icon"></i></div>
+                    <div>
+                        <div style="font-weight:700;font-size:14.5px;">@m.tieuDe</div>
+                        <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">@m.moTa</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+</div>

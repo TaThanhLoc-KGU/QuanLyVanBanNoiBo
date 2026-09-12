@@ -1,0 +1,174 @@
+@{ ViewData["Title"] = "Phòng họp"; }
+@{
+    var danhSach = ViewBag.PhongHop as List<CongVan.Models.PhongHop> ?? new List<CongVan.Models.PhongHop>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-door-open-fill me-2 text-primary"></i>Phòng họp</h1>
+        <p class="page-header-sub">Danh mục phòng để chọn khi đăng ký lịch công tác — hệ thống tự cảnh báo trùng lịch cùng phòng</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-door-open text-primary"></i>
+        <span class="card-title">Danh sách phòng</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemPhong()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm phòng
+            </button>
+        </div>
+    </div>
+    @if (!danhSach.Any())
+    {
+        <div class="card-body"><span class="text-muted fs-13">Chưa có phòng nào — thêm phòng để có thể chọn khi tạo Lịch công tác.</span></div>
+    }
+    else
+    {
+        <table class="app-table">
+            <thead>
+                <tr>
+                    <th>Tên phòng</th>
+                    <th>Vị trí</th>
+                    <th style="width:90px;">Sức chứa</th>
+                    <th>Ghi chú</th>
+                    <th style="width:90px;text-align:center;">Hiển thị</th>
+                    <th style="width:70px;text-align:center;">Sửa</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in danhSach)
+            {
+                <tr data-mapong="@p.MaPhong" data-ten="@p.TenPhong" data-vitri="@p.ViTri" data-succhua="@p.SucChua" data-ghichu="@p.GhiChu">
+                    <td class="fw-600">@p.TenPhong</td>
+                    <td class="text-muted fs-13">@p.ViTri</td>
+                    <td class="fs-13">@(p.SucChua.HasValue ? $"{p.SucChua} người" : "—")</td>
+                    <td class="text-muted fs-13">@p.GhiChu</td>
+                    <td style="text-align:center;">
+                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                            <input class="form-check-input" type="checkbox"
+                                   @(p.HienThi ? "checked" : "")
+                                   onchange="setHienThiPhong(@p.MaPhong, this.checked)"
+                                   style="cursor:pointer;width:36px;height:20px;" />
+                        </div>
+                    </td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn btn-icon btn-outline-secondary" onclick="moSuaPhong(@p.MaPhong)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Modal thêm/sửa phòng -->
+<div class="modal fade" id="modalPhong" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700" id="modalPhongTitle"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm phòng</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ph_MaPhong" value="0" />
+                <label class="form-label">Tên phòng <span class="form-required">*</span></label>
+                <input id="ph_TenPhong" class="form-control mb-2" placeholder="VD: Phòng họp A101" />
+                <label class="form-label">Vị trí</label>
+                <input id="ph_ViTri" class="form-control mb-2" placeholder="VD: Tầng 1, nhà A" />
+                <label class="form-label">Sức chứa</label>
+                <input id="ph_SucChua" type="number" min="1" class="form-control mb-2" placeholder="Số người" />
+                <label class="form-label">Ghi chú</label>
+                <input id="ph_GhiChu" class="form-control" placeholder="Không bắt buộc" />
+                <div id="phError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuPhong()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    themPhong: '@Url.Action("ThemPhongHop", "Admin")',
+    suaPhong: '@Url.Action("SuaPhongHop", "Admin")',
+    setHienThiPhong: '@Url.Action("SetHienThiPhongHop", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function moThemPhong() {
+    document.getElementById('modalPhongTitle').innerHTML = '<i class="bi bi-plus-circle me-2 text-success"></i>Thêm phòng';
+    document.getElementById('ph_MaPhong').value = 0;
+    document.getElementById('ph_TenPhong').value = '';
+    document.getElementById('ph_ViTri').value = '';
+    document.getElementById('ph_SucChua').value = '';
+    document.getElementById('ph_GhiChu').value = '';
+    document.getElementById('phError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalPhong')).show();
+}
+
+function moSuaPhong(maPhong) {
+    var row = document.querySelector('tr[data-mapong="' + maPhong + '"]');
+    if (!row) return;
+    document.getElementById('modalPhongTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-primary"></i>Sửa phòng';
+    document.getElementById('ph_MaPhong').value = maPhong;
+    document.getElementById('ph_TenPhong').value = row.dataset.ten || '';
+    document.getElementById('ph_ViTri').value = row.dataset.vitri || '';
+    document.getElementById('ph_SucChua').value = row.dataset.succhua || '';
+    document.getElementById('ph_GhiChu').value = row.dataset.ghichu || '';
+    document.getElementById('phError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalPhong')).show();
+}
+
+function luuPhong() {
+    var maPhong = parseInt(document.getElementById('ph_MaPhong').value, 10) || 0;
+    var tenPhong = document.getElementById('ph_TenPhong').value.trim();
+    var viTri = document.getElementById('ph_ViTri').value.trim();
+    var sucChua = document.getElementById('ph_SucChua').value.trim();
+    var ghiChu = document.getElementById('ph_GhiChu').value.trim();
+    var err = document.getElementById('phError');
+    if (!tenPhong) { err.textContent = 'Tên phòng không được để trống'; err.style.display = ''; return; }
+
+    var url = maPhong > 0 ? _U.suaPhong : _U.themPhong;
+    var data = { tenPhong: tenPhong, viTri: viTri, sucChua: sucChua, ghiChu: ghiChu };
+    if (maPhong > 0) data.maPhong = maPhong;
+    post(url, data, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalPhong')).hide();
+        showToast('Đã lưu phòng họp.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) { err.textContent = msg || 'Lỗi khi lưu'; err.style.display = ''; });
+}
+
+function setHienThiPhong(maPhong, val) {
+    post(_U.setHienThiPhong, { maPhong: maPhong, hienThi: val }, function() {
+        showToast('Đã cập nhật hiển thị phòng.', 'success');
+    });
+}
+</script>
+}

@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "Tính năng mới";
+    bool dangBat = ViewBag.DangBat is bool b && b;
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-flask me-2 text-primary"></i>Công tắc tính năng mới</h1>
+    </div>
+</div>
+
+<div class="card mb-3" style="max-width:640px;">
+    <div class="card-body">
+        <p class="fs-13 text-muted">
+            Khi <b>tắt</b>: chỉ tài khoản Admin thấy và dùng được các tính năng mới (Văn phòng điện tử,
+            Văn bản điều hành, Phân quyền nội bộ...) để kiểm tra trước — người dùng khác chỉ thấy
+            đúng phần Quản lý công văn như hiện tại.<br />
+            Khi <b>bật</b>: TẤT CẢ người dùng đều thấy các mục này (người đang đăng nhập sẵn cần
+            đăng xuất/đăng nhập lại mới thấy ngay).
+        </p>
+
+        <form method="post" asp-action="TinhNangMoi">
+            <div class="perm-row @(dangBat ? "on" : "")" style="display:flex;align-items:center;gap:12px;padding:12px 14px;">
+                <label class="perm-switch">
+                    <input type="checkbox" name="bat" value="true" @(dangBat ? "checked" : "")
+                           onchange="this.closest('.perm-row').classList.toggle('on', this.checked)" />
+                    <span class="track"></span>
+                    <span class="thumb"></span>
+                </label>
+                <div>
+                    <div style="font-weight:600;">Công khai tính năng mới cho tất cả người dùng</div>
+                    <div class="fs-12 text-muted">Hiện đang: <b>@(dangBat ? "BẬT — mọi người đều thấy" : "TẮT — chỉ Admin thấy")</b></div>
+                </div>
+            </div>
+            <input type="hidden" name="bat" value="false" />
+            <button type="submit" class="btn btn-primary btn-sm mt-3"><i class="bi bi-check-lg me-1"></i>Lưu</button>
+        </form>
+    </div>
+</div>

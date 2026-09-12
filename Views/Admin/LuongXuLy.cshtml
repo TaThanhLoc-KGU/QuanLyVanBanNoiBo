@@ -1,0 +1,149 @@
+@{ ViewData["Title"] = "Luồng xử lý"; }
+@{
+    var donVi = ViewBag.DonVi as List<CongVan.Models.DonVi> ?? new List<CongVan.Models.DonVi>();
+    var donViHD = donVi.Where(d => !d.DaGiaiThe).OrderBy(d => d.STT).ToList();
+    var luong = ViewBag.LuongXuLy as List<CongVan.Models.LuongXuLy> ?? new List<CongVan.Models.LuongXuLy>();
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-signpost-split-fill me-2 text-primary"></i>Luồng xử lý</h1>
+        <p class="page-header-sub">Cấu hình đơn vị nào được phép "Chuyển xử lý" văn bản sang đơn vị nào</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-signpost-split text-primary"></i>
+        <span class="card-title">Danh sách luồng được phép</span>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" onclick="moThemLuong()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm luồng
+            </button>
+        </div>
+    </div>
+    @if (!luong.Any())
+    {
+        <div class="card-body"><span class="text-muted fs-13">Chưa cấu hình luồng nào — đơn vị sẽ không thấy nút "Chuyển xử lý" trên văn bản đến (admin/văn thư vẫn chuyển được cho bất kỳ đơn vị nào).</span></div>
+    }
+    else
+    {
+        <table class="app-table">
+            <thead>
+                <tr>
+                    <th>Đơn vị nguồn</th>
+                    <th style="width:40px;text-align:center;"></th>
+                    <th>Đơn vị đích</th>
+                    <th>Ghi chú</th>
+                    <th style="width:70px;text-align:center;">Xóa</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var l in luong)
+            {
+                <tr>
+                    <td class="fw-600">@l.TenDVNguon</td>
+                    <td style="text-align:center;"><i class="bi bi-arrow-right text-muted"></i></td>
+                    <td class="fw-600">@l.TenDVDich</td>
+                    <td class="text-muted fs-13">@l.GhiChu</td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn btn-icon btn-outline-danger" onclick="xoaLuong(@l.ID)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Modal thêm luồng -->
+<div class="modal fade" id="modalThemLuong" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm luồng xử lý</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Đơn vị nguồn</label>
+                <select id="lxl_Nguon" class="form-select ts-select mb-2">
+                    @foreach (var dv in donViHD)
+                    { <option value="@dv.MaDV">@dv.TenDV</option> }
+                </select>
+                <label class="form-label">Đơn vị đích</label>
+                <select id="lxl_Dich" class="form-select ts-select mb-2">
+                    @foreach (var dv in donViHD)
+                    { <option value="@dv.MaDV">@dv.TenDV</option> }
+                </select>
+                <label class="form-label">Ghi chú</label>
+                <input id="lxl_GhiChu" class="form-control" placeholder="Không bắt buộc" />
+                <div id="themLuongError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="luuLuongMoi()">
+                    <i class="bi bi-floppy me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _U = {
+    themLuong: '@Url.Action("ThemLuongXuLy", "Admin")',
+    xoaLuong: '@Url.Action("XoaLuongXuLy", "Admin")'
+};
+
+function post(url, data, cb, errCb) {
+    var body = Object.entries(data).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
+        .then(function(r) {
+            var clone = r.clone();
+            r.json().then(function(j){
+                if (j && j.ok === false) { if (errCb) errCb(j.msg); else alert(j.msg || 'Lỗi'); }
+                else { if (cb) cb(j); }
+            }).catch(function(){
+                if (clone.ok) { if (cb) cb(); }
+                else clone.text().then(function(t){ if (errCb) errCb(t); else alert('Lỗi: ' + t); });
+            });
+        })
+        .catch(function(e){ alert('Lỗi kết nối: ' + e); });
+}
+
+function moThemLuong() {
+    document.getElementById('lxl_GhiChu').value = '';
+    document.getElementById('themLuongError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalThemLuong')).show();
+}
+
+function luuLuongMoi() {
+    var selN = document.getElementById('lxl_Nguon');
+    var selD = document.getElementById('lxl_Dich');
+    var maDVNguon = selN.tomselect ? selN.tomselect.getValue() : selN.value;
+    var maDVDich = selD.tomselect ? selD.tomselect.getValue() : selD.value;
+    var ghiChu = document.getElementById('lxl_GhiChu').value.trim();
+    var err = document.getElementById('themLuongError');
+    if (maDVNguon === maDVDich) { err.textContent = 'Đơn vị nguồn và đích phải khác nhau'; err.style.display = ''; return; }
+    post(_U.themLuong, { maDVNguon: maDVNguon, maDVDich: maDVDich, ghiChu: ghiChu }, function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalThemLuong')).hide();
+        showToast('Đã thêm luồng xử lý.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }, function(msg) { err.textContent = msg || 'Lỗi khi lưu'; err.style.display = ''; });
+}
+
+function xoaLuong(id) {
+    if (!confirm('Xóa luồng này?')) return;
+    post(_U.xoaLuong, { id: id }, function() {
+        showToast('Đã xóa luồng.', 'success');
+        setTimeout(() => location.reload(), 700);
+    });
+}
+</script>
+}
