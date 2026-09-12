@@ -1,0 +1,505 @@
+@{
+    string hoTen    = ViewBag.HoTen   as string ?? "Người dùng";
+    int    quyen    = ViewBag.Quyen   is int q ? q : -1;
+    string tenDV    = ViewBag.TenDV   as string ?? "";
+    var    quyenList = ViewBag.QuyenList as List<int> ?? new List<int>();
+    var    chucNangSet = ViewBag.ChucNang as HashSet<string> ?? new HashSet<string>();
+    bool   coQuyenQT = quyenList.Contains(0) || chucNangSet.Any(c => c.StartsWith("Admin."));
+    bool   coTheNhapCVDen = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNangSet, "CongVanDen.Nhap");
+    bool   laVanThuDonVi = ViewBag.LaVanThuDonVi is bool lvtd && lvtd;
+    bool   laLanhDaoDonVi = ViewBag.LaLanhDaoDonVi is bool lldv && lldv;
+    bool   coTheNhapCVDi = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNangSet, "CongVanDi.Nhap") || laVanThuDonVi;
+    bool   xemToanTruong = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNangSet, "Global.XemToanTruong");
+    bool   xemTinhNangMoi = ViewBag.XemDuocTinhNangMoi is bool xtnm && xtnm;
+
+    string initials = hoTen.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?[..1].ToUpper() ?? "?";
+
+    string ctrl  = (ViewContext.RouteData.Values["controller"] as string ?? "").ToLower();
+    string action = (ViewContext.RouteData.Values["action"]   as string ?? "").ToLower();
+    string pageTitle = ViewData["Title"] as string ?? "Quản lý Văn bản";
+    var mucHuongDan = CongVan.Models.HuongDanSuDung.Tra(
+        ViewContext.RouteData.Values["controller"] as string ?? "",
+        ViewContext.RouteData.Values["action"] as string ?? "");
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle — VNKGU</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap&subset=vietnamese" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+<!--
+THESIS: Trạng thái văn bản là 1 tiến trình theo bước (Tiếp nhận→Xử lý→Hoàn thành), không phải badge tĩnh; bỏ hẳn kiểu "dashboard SaaS xanh Bootstrap chung chung".
+OWN-WORLD: Xanh dương thể chế (#0B4A87) làm accent duy nhất; đỏ (#C0392B) CHỈ dành cho khẩn/quá hạn, không trang trí; nền nghiêng xanh nhạt #F3F6FA; font Be Vietnam Pro; badge vuông vắn có chấm màu, không pill mềm; sidebar xanh đậm thể chế thay vì slate đen.
+STORY: Văn thư mở app, thấy ngay văn bản nào đang ở bước nào trong luồng xử lý, không cần đọc từng dòng chữ — quét bằng vị trí+màu.
+FIRST VIEWPORT: Sidebar xanh đậm bên trái (đã gộp "Văn bản đến" thành 1 mục + tab-bar lọc trạng thái bên trong, không tách 6 mục menu); topbar trắng; nội dung nền xanh nhạt với card trắng, bảng có badge trạng thái dạng chấm màu.
+FORM: Cổng Dịch Vụ Công Quốc Gia — direction #3 của roll thứ 3, seed key 04b04470.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md.
+-->
+
+<!-- ═══ SIDEBAR ════════════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+
+    <a class="sidebar-brand" asp-controller="Home" asp-action="Index">
+        <div class="sidebar-logo"><i class="bi bi-envelope-paper-fill"></i></div>
+        <div class="sidebar-brand-name">
+            Văn bản VNKGU
+            <small>Trường ĐH Kiên Giang</small>
+        </div>
+    </a>
+
+    @{
+        // Mở/đóng từng nhóm sidebar được nhớ theo localStorage (JS); mặc định nhóm nào có mục
+        // đang active thì luôn mở, còn lại theo trạng thái đã lưu (hoặc mặc định ban đầu bên dưới).
+        bool activeVanBan   = ctrl is "home" or "congvanden" or "congvandi" or "vanbandieuhanh";
+        bool activeVPDT     = ctrl is "congviec" or "hosocongviec" or "lichcongtac" or "lichlamviec" or "thongbao" or "lichnoibodonvi" or "vanbannoibo";
+        bool activeTraCuu   = ctrl == "donvi";
+        bool activeQuanTri  = ctrl == "admin";
+    }
+
+    <div class="sidebar-section @(activeVanBan?"":"js-collapsible")" data-section="vanban">
+        <div class="sidebar-section-label collapsible" onclick="toggleSidebarSection('vanban')">
+            Văn bản
+            <i class="bi bi-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-nav">
+            <a class="nav-link-main @(ctrl=="home"?"active":"")" asp-controller="Home" asp-action="Index">
+                <i class="bi bi-grid-fill nav-icon"></i>Tổng quan
+            </a>
+            <a class="nav-link-main @(ctrl=="congvanden"?"active":"")" asp-controller="CongVanDen" asp-action="Index">
+                <i class="bi bi-inbox-fill nav-icon"></i>Văn bản đến
+            </a>
+            <a class="nav-link-main @(ctrl=="congvandi"?"active":"")" asp-controller="CongVanDi" asp-action="Index">
+                <i class="bi bi-send-fill nav-icon"></i>Văn bản đi
+            </a>
+            @if (xemTinhNangMoi)
+            {
+                <a class="nav-link-main @(ctrl=="vanbandieuhanh"?"active":"")" asp-controller="VanBanDieuHanh" asp-action="Index">
+                    <i class="bi bi-gear-fill nav-icon"></i>Văn bản điều hành
+                </a>
+            }
+        </div>
+    </div>
+
+    @if (xemTinhNangMoi)
+    {
+        <div class="sidebar-section @(activeVPDT?"":"js-collapsible")" data-section="vpdt">
+            <div class="sidebar-section-label collapsible" onclick="toggleSidebarSection('vpdt')">
+                Văn phòng điện tử
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="sidebar-nav">
+                <a class="nav-link-main @(ctrl=="congviec"?"active":"")" asp-controller="CongViec" asp-action="Index">
+                    <i class="bi bi-list-task nav-icon"></i>Quản lý công việc
+                </a>
+                <a class="nav-link-main @(ctrl=="hosocongviec"?"active":"")" asp-controller="HoSoCongViec" asp-action="Index">
+                    <i class="bi bi-folder2-open nav-icon"></i>Hồ sơ công việc
+                </a>
+                <a class="nav-link-main @(ctrl=="lichlamviec"||ctrl=="lichcongtac"?"active":"")" asp-controller="LichLamViec" asp-action="Index">
+                    <i class="bi bi-calendar2-check-fill nav-icon"></i>Lịch làm việc
+                </a>
+                <a class="nav-link-main @(ctrl=="thongbao"?"active":"")" asp-controller="ThongBao" asp-action="Index">
+                    <i class="bi bi-megaphone-fill nav-icon"></i>Thông báo
+                </a>
+                <a class="nav-link-main @(ctrl=="lichnoibodonvi"?"active":"")" asp-controller="LichNoiBoDonVi" asp-action="Index">
+                    <i class="bi bi-calendar2-week-fill nav-icon"></i>Lịch nội bộ đơn vị
+                </a>
+                <a class="nav-link-main @(ctrl=="vanbannoibo"?"active":"")" asp-controller="VanBanNoiBo" asp-action="Index">
+                    <i class="bi bi-folder2-open nav-icon"></i>Văn bản nội bộ đơn vị
+                </a>
+            </div>
+        </div>
+    }
+
+    <div class="sidebar-section @(activeTraCuu?"":"js-collapsible")" data-section="tracuu">
+        <div class="sidebar-section-label collapsible" onclick="toggleSidebarSection('tracuu')">
+            Tra cứu &amp; Đơn vị
+            <i class="bi bi-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-nav">
+            <a class="nav-link-main @(ctrl=="donvi"&&action=="tracuuvanban"?"active":"")" asp-controller="DonVi" asp-action="TraCuuVanBan">
+                <i class="bi bi-search nav-icon"></i>Tra cứu văn bản
+            </a>
+            <a class="nav-link-main @(ctrl=="donvi"&&action=="index"?"active":"")" asp-controller="DonVi" asp-action="Index">
+                <i class="bi bi-building-fill nav-icon"></i>Đơn vị
+            </a>
+            @if (laLanhDaoDonVi || laVanThuDonVi || coQuyenQT)
+            {
+                <a class="nav-link-main @(ctrl=="donvi"&&action=="hosodonvi"?"active":"")" asp-controller="DonVi" asp-action="HoSoDonVi">
+                    <i class="bi bi-envelope-at-fill nav-icon"></i>Hồ sơ &amp; Email đơn vị
+                </a>
+            }
+            @if (xemTinhNangMoi && (laLanhDaoDonVi || coQuyenQT))
+            {
+                <a class="nav-link-main @(ctrl=="donvi"&&action=="phanquyennoibo"?"active":"")" asp-controller="DonVi" asp-action="PhanQuyenNoiBo">
+                    <i class="bi bi-shield-lock-fill nav-icon"></i>Phân quyền nội bộ
+                </a>
+            }
+        </div>
+    </div>
+
+    @if (coQuyenQT)
+    {
+        <div class="sidebar-section @(activeQuanTri?"":"js-collapsible")" data-section="quantri">
+            <div class="sidebar-section-label collapsible" onclick="toggleSidebarSection('quantri')">
+                Quản trị hệ thống
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="sidebar-nav">
+                <a class="nav-link-main @(ctrl=="admin"&&action=="index"?"active":"")" asp-controller="Admin" asp-action="Index">
+                    <i class="bi bi-speedometer2 nav-icon"></i>Tổng quan
+                </a>
+
+                <div class="sidebar-subgroup-label">Nhân sự &amp; phân quyền</div>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="nhanvien"?"active":"")" asp-controller="Admin" asp-action="NhanVien">
+                    <i class="bi bi-people-fill nav-icon"></i>Nhân viên
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="phanquyen"?"active":"")" asp-controller="Admin" asp-action="PhanQuyen">
+                    <i class="bi bi-person-badge-fill nav-icon"></i>Phân quyền
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="lanhdaophong"?"active":"")" asp-controller="Admin" asp-action="LanhDaoPhong">
+                    <i class="bi bi-person-workspace nav-icon"></i>Lãnh đạo phòng &amp; Email
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="bangiamhieu"?"active":"")" asp-controller="Admin" asp-action="BanGiamHieu">
+                    <i class="bi bi-person-badge nav-icon"></i>Ban Giám Hiệu
+                </a>
+
+                <div class="sidebar-subgroup-label">Danh mục</div>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="donvi"?"active":"")" asp-controller="Admin" asp-action="DonVi">
+                    <i class="bi bi-diagram-3-fill nav-icon"></i>Đơn vị
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="coquan"?"active":"")" asp-controller="Admin" asp-action="CoQuan">
+                    <i class="bi bi-building nav-icon"></i>Cơ quan ban hành
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="loaivanban"?"active":"")" asp-controller="Admin" asp-action="LoaiVanBan">
+                    <i class="bi bi-tags-fill nav-icon"></i>Loại văn bản
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="sovanban"?"active":"")" asp-controller="Admin" asp-action="SoVanBan">
+                    <i class="bi bi-journal-bookmark-fill nav-icon"></i>Sổ văn bản
+                </a>
+
+                <div class="sidebar-subgroup-label">Cấu hình</div>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="cauhinhemail"?"active":"")" asp-controller="Admin" asp-action="CauHinhEmail">
+                    <i class="bi bi-envelope-fill nav-icon"></i>Cấu hình Email
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="luongxuly"?"active":"")" asp-controller="Admin" asp-action="LuongXuLy">
+                    <i class="bi bi-signpost-split-fill nav-icon"></i>Luồng xử lý (văn bản đến)
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="luongduyet"?"active":"")" asp-controller="Admin" asp-action="LuongDuyet">
+                    <i class="bi bi-diagram-3-fill nav-icon"></i>Cấu hình luồng duyệt / trình ký
+                </a>
+                <a class="nav-link-main @(ctrl=="admin"&&action=="phonghop"?"active":"")" asp-controller="Admin" asp-action="PhongHop">
+                    <i class="bi bi-door-open-fill nav-icon"></i>Phòng họp
+                </a>
+            </div>
+        </div>
+    }
+
+    <div class="sidebar-user">
+        <div class="sidebar-user-btn" onclick="var m=document.getElementById('userMenuDD');m.style.display=m.style.display==='block'?'none':'block';">
+            <div class="user-avatar">@initials</div>
+            <div>
+                <div class="user-name">@hoTen</div>
+                <div class="user-role fs-12 text-muted">@tenDV</div>
+            </div>
+            <i class="bi bi-three-dots-vertical ms-auto text-muted" style="font-size:14px;"></i>
+        </div>
+        <div id="userMenuDD" class="dropdown-menu w-100 mt-1" style="position:static;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08);">
+            <a class="dropdown-item" asp-controller="Account" asp-action="DoiMatKhau">
+                <i class="bi bi-key me-2"></i>Đổi mật khẩu
+            </a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout">
+                <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
+            </a>
+        </div>
+    </div>
+
+</aside>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ═══ TOPBAR ════════════════════════════════════════════════ -->
+<header class="topbar">
+    <button class="topbar-toggle" onclick="toggleSidebar()" title="Menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div class="topbar-breadcrumb">
+        <a asp-controller="Home" asp-action="Index"><i class="bi bi-house"></i></a>
+        @if (!string.IsNullOrEmpty(pageTitle) && pageTitle != "Tổng quan")
+        {
+            <i class="bi bi-chevron-right" style="font-size:10px;"></i>
+            <span class="page-title">@pageTitle</span>
+        }
+    </div>
+
+    <div class="topbar-right">
+        @if (coTheNhapCVDen)
+        {
+            <a asp-controller="CongVanDen" asp-action="Nhap" class="topbar-new-btn" title="Nhập văn bản đến mới">
+                <i class="bi bi-plus-lg"></i><span class="d-none d-md-inline">Văn bản đến</span>
+            </a>
+        }
+        @if (coTheNhapCVDi)
+        {
+            <a asp-controller="CongVanDi" asp-action="Nhap" class="topbar-new-btn ms-1" style="background:var(--success);" title="Nhập văn bản đi mới">
+                <i class="bi bi-plus-lg"></i><span class="d-none d-md-inline">Văn bản đi</span>
+            </a>
+        }
+        <button class="topbar-icon-btn ms-1" id="btnHuongDan" title="Hướng dẫn sử dụng" onclick="moHuongDan()">
+            <i class="bi bi-question-circle" style="font-size:17px;"></i>
+        </button>
+        @if (!xemToanTruong)
+        {
+            <div class="notif-wrap ms-1" style="position:relative;">
+                <button class="topbar-icon-btn" id="btnBell" title="Thông báo" onclick="toggleNotif(event)" style="position:relative;">
+                    <i class="bi bi-bell-fill" style="font-size:17px;"></i>
+                    <span id="notifBadge" style="display:none;position:absolute;top:4px;right:4px;
+                          background:var(--danger);color:#fff;border-radius:50%;font-size:9px;font-weight:700;
+                          width:16px;height:16px;line-height:16px;text-align:center;">0</span>
+                </button>
+                <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);
+                     width:370px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+                     box-shadow:var(--shadow-lg);z-index:9999;max-height:480px;overflow-y:auto;">
+                    <div id="notifEventsSection">
+                        <div style="padding:11px 15px 9px;font-weight:700;font-size:13.5px;border-bottom:1px solid var(--border);
+                             display:flex;justify-content:space-between;align-items:center;">
+                            <span><i class="bi bi-broadcast me-1 text-primary"></i>Việc mới giao / chuyển đến</span>
+                            <a href="javascript:void(0)" onclick="danhDauTatCaThongBao()" style="font-size:12px;font-weight:400;color:var(--primary);">Đánh dấu đã xem</a>
+                        </div>
+                        <div id="notifEventsList"></div>
+                    </div>
+                    <div style="padding:11px 15px 9px;font-weight:700;font-size:13.5px;border-bottom:1px solid var(--border);
+                         display:flex;justify-content:space-between;align-items:center;">
+                        <span><i class="bi bi-bell me-1 text-primary"></i>Văn bản chưa xem</span>
+                        <a href="/CongVanDen" style="font-size:12px;font-weight:400;color:var(--primary);">Xem tất cả</a>
+                    </div>
+                    <div id="notifList" style="max-height:320px;overflow-y:auto;"></div>
+                    <div id="notifEmpty" style="display:none;padding:22px;text-align:center;color:var(--muted);font-size:13.5px;">
+                        <i class="bi bi-check-circle text-success" style="font-size:26px;display:block;margin-bottom:7px;"></i>
+                        Không có văn bản chưa xem
+                    </div>
+                </div>
+            </div>
+        }
+        <a asp-controller="Account" asp-action="DoiMatKhau" class="topbar-icon-btn ms-1" title="Tài khoản">
+            <div class="user-avatar" style="width:30px;height:30px;font-size:11.5px;">@initials</div>
+        </a>
+    </div>
+</header>
+
+<!-- ═══ MAIN ════════════════════════════════════════════════== -->
+<div class="main-wrapper">
+    <main class="page-content">
+        @RenderBody()
+    </main>
+    <footer style="padding:12px 28px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);background:var(--card);">
+        © @DateTime.Now.Year Trường Đại học Kiên Giang &nbsp;|&nbsp; Hệ thống Quản lý Văn bản
+    </footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+@if (TempData["Success"] != null)
+{
+    <script>document.addEventListener('DOMContentLoaded',function(){showToast('@Html.Raw(TempData["Success"]?.ToString()?.Replace("'","\\'"))','success');});</script>
+}
+@if (TempData["Error"] != null)
+{
+    <script>document.addEventListener('DOMContentLoaded',function(){showToast('@Html.Raw(TempData["Error"]?.ToString()?.Replace("'","\\'"))','error');});</script>
+}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+/* ── Sidebar (mobile) ────────────────────────────────────── */
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('visible');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('visible');
+}
+
+/* ── Sidebar: đóng/mở từng nhóm, nhớ trạng thái qua localStorage ────────── */
+var SIDEBAR_COLLAPSED_BY_DEFAULT = ['quantri'];
+function toggleSidebarSection(id) {
+    var el = document.querySelector('.sidebar-section[data-section="' + id + '"]');
+    if (!el) return;
+    var collapsed = el.classList.toggle('collapsed');
+    try { localStorage.setItem('sidebar-collapsed-' + id, collapsed ? '1' : '0'); } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.sidebar-section.js-collapsible').forEach(function (el) {
+        var id = el.dataset.section;
+        var saved = null;
+        try { saved = localStorage.getItem('sidebar-collapsed-' + id); } catch (e) {}
+        var collapsed = saved !== null ? saved === '1' : SIDEBAR_COLLAPSED_BY_DEFAULT.indexOf(id) !== -1;
+        el.classList.toggle('collapsed', collapsed);
+    });
+});
+
+/* ── TomSelect auto-init ─────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('select.ts-select').forEach(function (el) {
+        if (!el.tomselect) {
+            new TomSelect(el, {
+                allowEmptyOption: true,
+                maxOptions: 500,
+                plugins: ['remove_button'],
+                render: {
+                    no_results: function () { return '<div class="no-results">Không tìm thấy</div>'; }
+                }
+            });
+        }
+    });
+});
+
+/* ── Gợi ý "vuốt ngang" cho bảng bị tràn trên màn nhỏ ───── */
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.innerWidth > 700) return;
+    document.querySelectorAll('.tbl-wrap, .table-wrapper').forEach(function (w) {
+        if (w.scrollWidth <= w.clientWidth + 4) return;
+        if (w.previousElementSibling && w.previousElementSibling.classList.contains('tbl-scroll-hint')) return;
+        var h = document.createElement('div');
+        h.className = 'tbl-scroll-hint';
+        h.innerHTML = '<i class="bi bi-arrow-left-right"></i> Vuốt ngang để xem đủ các cột';
+        w.parentNode.insertBefore(h, w);
+    });
+});
+
+/* ── Toast ───────────────────────────────────────────────── */
+function showToast(msg, type) {
+    type = type || 'info';
+    var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
+    var el = document.createElement('div');
+    el.className = 'app-toast toast-' + type;
+    el.innerHTML = '<i class="bi ' + icons[type] + ' app-toast-icon"></i>'
+        + '<div class="app-toast-body">' + msg + '</div>'
+        + '<button class="app-toast-close" onclick="this.closest(\'.app-toast\').remove()">&times;</button>';
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(function () { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(function(){el.remove()},300); }, 5000);
+}
+</script>
+<!-- Hướng dẫn sử dụng — nội dung riêng theo từng trang, xem Models/HuongDanSuDung.cs -->
+<div class="modal fade" id="modalHuongDan" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-question-circle-fill me-2 text-primary"></i><span id="hdTieuDe">Hướng dẫn sử dụng</span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="hdNoiDung" style="font-size:13.5px;line-height:1.7;"></div>
+        </div>
+    </div>
+</div>
+<script>
+function moHuongDan() {
+@if (mucHuongDan != null)
+{
+    @:document.getElementById('hdTieuDe').textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mucHuongDan.TieuDe));
+    @:document.getElementById('hdNoiDung').innerHTML = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mucHuongDan.NoiDungHtml));
+}
+else
+{
+    @:document.getElementById('hdTieuDe').textContent = 'Hướng dẫn sử dụng';
+    @:document.getElementById('hdNoiDung').innerHTML = '<p class="text-muted">Trang này chưa có hướng dẫn riêng. Có thắc mắc, liên hệ văn thư/quản trị hệ thống.</p>';
+}
+    new bootstrap.Modal(document.getElementById('modalHuongDan')).show();
+}
+</script>
+@await RenderSectionAsync("Scripts", required: false)
+
+<script>
+(function(){
+    var panel = document.getElementById('notifPanel');
+    var badge = document.getElementById('notifBadge');
+    var list  = document.getElementById('notifList');
+    var empty = document.getElementById('notifEmpty');
+    if (!panel) return;
+
+    function loadNotif() {
+        fetch('/Notification/GetBadge')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                var total = (d.count || 0) + (d.eventCount || 0);
+                if (total > 0) {
+                    badge.style.display = 'block';
+                    badge.textContent = total > 99 ? '99+' : total;
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                var eventsSection = document.getElementById('notifEventsSection');
+                var eventsList = document.getElementById('notifEventsList');
+                if (d.events && d.events.length > 0) {
+                    eventsSection.style.display = '';
+                    eventsList.innerHTML = d.events.map(function(ev){
+                        var url = ev.mscv ? ('/CongVanDen/ChiTiet/' + ev.mscv) : 'javascript:void(0)';
+                        return '<a href="' + url + '" onclick="danhDauDaXemThongBao(' + ev.id + ')" style="display:flex;gap:9px;padding:10px 15px;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);' +
+                            (ev.daXem ? 'opacity:.55;' : 'background:var(--primary-50);') + '" ' +
+                            'onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'' + (ev.daXem?'':'var(--primary-50)') + '\'">' +
+                            '<i class="bi ' + ev.icon + '" style="color:var(--primary);font-size:15px;margin-top:2px;flex-shrink:0;"></i>' +
+                            '<div><div style="font-size:12.5px;line-height:1.4;">' + ev.noiDung + '</div>' +
+                            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + ev.ngayTao + '</div></div></a>';
+                    }).join('');
+                } else {
+                    eventsSection.style.display = 'none';
+                }
+
+                if (d.items && d.items.length > 0) {
+                    list.style.display = '';
+                    empty.style.display = 'none';
+                    list.innerHTML = d.items.map(function(it){
+                        return '<a href="/CongVanDen/ChiTiet/' + it.mscv + '" style="display:block;padding:11px 15px;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);" ' +
+                            'onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">' +
+                            '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">' +
+                            '<span style="font-weight:700;font-size:12.5px;color:var(--primary);">' + it.soCV + '</span>' +
+                            '<span style="font-size:11px;color:var(--muted);">' + it.ngayDen + '</span></div>' +
+                            '<div style="font-size:12.5px;line-height:1.4;">' + it.trichYeu + '</div>' +
+                            '<div style="font-size:11.5px;color:var(--muted);margin-top:2px;">' + (it.tenCQ || '') + '</div>' +
+                            '</a>';
+                    }).join('');
+                } else {
+                    list.style.display = 'none';
+                    empty.style.display = '';
+                }
+            }).catch(function(){});
+    }
+
+    window.toggleNotif = function(e) {
+        e.stopPropagation();
+        var show = panel.style.display === 'none';
+        panel.style.display = show ? 'block' : 'none';
+        if (show) loadNotif();
+    };
+
+    window.danhDauDaXemThongBao = function(id) {
+        fetch('/Notification/DanhDauDaXemThongBao', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'id=' + id });
+    };
+
+    window.danhDauTatCaThongBao = function() {
+        fetch('/Notification/DanhDauTatCaDaXemThongBao', { method: 'POST' }).then(loadNotif);
+    };
+
+    document.addEventListener('click', function(e){
+        if (!e.target.closest('.notif-wrap')) panel.style.display = 'none';
+    });
+
+    loadNotif();
+    setInterval(loadNotif, 60000);
+})();
+</script>
+</body>
+</html>

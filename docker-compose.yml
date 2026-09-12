@@ -1,0 +1,49 @@
+services:
+  db:
+    build: ./db-init   # image SQL Server tùy chỉnh, tự phục hồi dữ liệu thật lúc khởi động lần đầu — xem db-init/ + DOCKER.md
+    container_name: congvan_db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Express
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./db-backup:/db-backup   # để đây .bak khi cần phục hồi thủ công theo cách khác — xem DOCKER.md
+    ports:
+      - "127.0.0.1:1433:1433"    # chỉ nghe nội bộ (không public) — dùng khi cần SSMS/azdata nối vào từ máy host
+    healthcheck:
+      # Chờ CẢ 2: cờ /tmp/mssql-restore-done (entrypoint.sh chỉ tạo sau khi phục hồi xong hoặc xác
+      # nhận không cần phục hồi) VÀ sqlservr tự trả lời được — tránh app kết nối vào lúc DB đang
+      # phục hồi dở dang (phục hồi lần đầu có thể mất vài phút vì gần 30 nghìn dòng INSERT).
+      test: ["CMD-SHELL", "test -f /tmp/mssql-restore-done && /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -b -Q \"SELECT 1\" -o /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  app:
+    build: .
+    container_name: congvan_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__CongVanConnection: "Data Source=db;Initial Catalog=${DB_NAME};User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      FileStorage__RootPath: /data/files
+      OldServerSync__ConnectionString: "${OLD_SERVER_SYNC_CONNECTION}"
+    volumes:
+      - /home/tainguyen:/data/files   # bind mount thẳng vào thư mục thật trên /home (không qua Docker volume trừu
+                                       # tượng) — để upload file trực tiếp qua SFTP/FTP mà app đọc được ngay, không
+                                       # cần "docker cp". Nằm trên /home (nhiều dung lượng), không phải / (ổ root).
+      - congvan_dpkeys:/app/dp-keys   # data-protection keys — mất thì mọi người bị đăng xuất/token cũ hỏng
+    ports:
+      - "5100:5100"   # bind tren TAT CA IP cua may (0.0.0.0) — truy cap duoc qua Tailscale
+                       # (100.110.62.27:5100), qua LAN truong (vd 172.16.0.248:5100), hoac bat ky
+                       # dia chi nao khac cua may nay. Mo rong theo yeu cau nguoi dung 2026-08-23.
+
+volumes:
+  mssql_data:
+  congvan_dpkeys:

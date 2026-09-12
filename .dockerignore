@@ -1,0 +1,24 @@
+bin/
+obj/
+.vs/
+.vscode/
+.git/
+.gitignore
+*.user
+dp-keys/
+publish_folder/
+publish_folder.zip
+publish_linux/
+publish_linux.7z
+publish_linux.zip
+migrations/
+*.md
+docker-compose.yml
+docker-compose.*.yml
+.env
+.env.*
+
+# db-init/ chỉ cần cho build context của service "db" (db-init/Dockerfile, context riêng) — service
+# "app" build từ context gốc này và KHÔNG cần nó; loại trừ ở đây để dữ liệu thật (db_thuc_te.sql.gz,
+# chứa PII thật) không bị COPY nhầm vào layer nào của image app.
+db-init/

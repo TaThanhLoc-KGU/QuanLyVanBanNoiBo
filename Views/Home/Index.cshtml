@@ -1,0 +1,217 @@
+@using CongVan.Models
+@{
+    ViewData["Title"] = "Tổng quan";
+    var stats   = ViewBag.Stats as Dictionary<string, int> ?? new Dictionary<string, int>();
+    var cvMoi   = ViewBag.CVDenMoi as List<CongVanDen> ?? new List<CongVanDen>();
+    var dvChuaXem = ViewBag.DonViChuaXem as List<CongVanDen> ?? new List<CongVanDen>();
+    int nam     = ViewBag.Nam ?? DateTime.Now.Year;
+    int thang   = ViewBag.Thang ?? DateTime.Now.Month;
+    string hoTen = ViewBag.HoTen ?? "";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool xemTatCa = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "Global.XemToanTruong");
+    string tenDV  = ViewBag.TenDV ?? "";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Xin chào, @(hoTen.Split(' ').Last())</h1>
+        <p class="page-header-sub">Tổng quan hệ thống — Tháng @thang/@nam</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-controller="CongVanDen" asp-action="Nhap" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Nhập văn bản đến
+        </a>
+        <a asp-controller="CongVanDi" asp-action="Nhap" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-send me-1"></i>Vào số văn bản đi
+        </a>
+        <a asp-controller="VanBanDieuHanh" asp-action="Nhap" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-gear me-1"></i>Ban hành văn bản điều hành
+        </a>
+    </div>
+</div>
+
+<div class="stat-cards">
+    <a class="stat-card" asp-controller="CongVanDen" asp-action="Index" asp-route-nam="@nam">
+        <div class="stat-icon si-blue"><i class="bi bi-inbox-fill"></i></div>
+        <div>
+            <div class="stat-label">Văn bản đến năm @nam</div>
+            <div class="stat-value">@stats.GetValueOrDefault("TongNam",0)</div>
+            <div class="stat-sub">văn bản</div>
+        </div>
+    </a>
+    <a class="stat-card" asp-controller="CongVanDen" asp-action="Index" asp-route-nam="@nam">
+        <div class="stat-icon si-blue"><i class="bi bi-calendar3"></i></div>
+        <div>
+            <div class="stat-label">Tháng @thang này</div>
+            <div class="stat-value">@stats.GetValueOrDefault("TongThang",0)</div>
+            <div class="stat-sub">văn bản</div>
+        </div>
+    </a>
+    <a class="stat-card" asp-controller="CongVanDen" asp-action="DangXuLy">
+        <div class="stat-icon si-amber"><i class="bi bi-hourglass-split"></i></div>
+        <div>
+            <div class="stat-label">Đang xử lý</div>
+            <div class="stat-value">@stats.GetValueOrDefault("DangXuLy",0)</div>
+            <div class="stat-sub">văn bản</div>
+        </div>
+    </a>
+    <a class="stat-card" asp-controller="CongVanDen" asp-action="DangXuLyTre">
+        <div class="stat-icon si-red"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div>
+            <div class="stat-label">Quá hạn xử lý</div>
+            <div class="stat-value">@stats.GetValueOrDefault("QuaHan",0)</div>
+            <div class="stat-sub">văn bản</div>
+        </div>
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history text-primary"></i>
+                <span class="card-title">
+                    Văn bản đến mới nhất năm @nam
+                    @if (!xemTatCa && !string.IsNullOrEmpty(tenDV))
+                    {
+                        <span class="text-muted fs-13 fw-400"> — @tenDV</span>
+                    }
+                </span>
+                <div class="card-tools">
+                    <a asp-controller="CongVanDen" asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                        Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (!cvMoi.Any())
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <p>Chưa có văn bản nào trong năm @nam</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="tbl-wrap" style="border:none;border-radius:0;box-shadow:none;">
+                        <table class="app-table tbl-clickable">
+                            <thead>
+                                <tr>
+                                    <th>Ngày đến</th>
+                                    <th>Số văn bản</th>
+                                    <th>Cơ quan</th>
+                                    <th>Trích yếu</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cv in cvMoi)
+                                {
+                                    string urlChiTiet = Url.Action("ChiTiet", "CongVanDen", new { id = cv.MSCV?.Trim() })!;
+                                    <tr onclick="location.href='@urlChiTiet'">
+                                        <td class="fs-13" style="white-space:nowrap;">@cv.NgayDen.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <a href="@urlChiTiet" style="font-weight:700;color:var(--primary);text-decoration:none;">
+                                                @(cv.STT1 ?? cv.STT.ToString())
+                                            </a>
+                                        </td>
+                                        <td class="wrap-cell fs-13">@cv.TenCQ</td>
+                                        <td class="wrap-cell">@cv.TrichYeu</td>
+                                        <td>
+                                            <span class="badge-status @cv.TrangThaiCss"><i class="bi @cv.TrangThaiIcon"></i>@cv.TrangThaiLabel</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-lightning-charge-fill text-warning"></i>
+                <span class="card-title">Thao tác nhanh</span>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a asp-controller="CongVanDen" asp-action="Nhap" class="btn btn-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-inbox-fill"></i>Nhập văn bản đến
+                </a>
+                <a asp-controller="CongVanDi" asp-action="Nhap" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-send-fill"></i>Vào số văn bản đi
+                </a>
+                <a asp-controller="VanBanDieuHanh" asp-action="Nhap" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-gear-fill"></i>Ban hành văn bản điều hành
+                </a>
+                <a asp-controller="CongVanDen" asp-action="Index" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                    <i class="bi bi-search"></i>Tra cứu văn bản đến
+                </a>
+                <a asp-controller="DonVi" asp-action="TraCuuVanBan" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                    <i class="bi bi-building"></i>Tra cứu văn bản đơn vị
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-eye-slash text-warning"></i>
+                <span class="card-title">Đơn vị chưa xem</span>
+                <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">30 ngày gần đây</span>
+            </div>
+            @if (!dvChuaXem.Any())
+            {
+                <div class="card-body">
+                    <span style="font-size:13px;color:var(--muted);"><i class="bi bi-check-circle-fill text-success me-1"></i>Không có văn bản nào bị bỏ sót.</span>
+                </div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                    @foreach (var cv in dvChuaXem)
+                    {
+                        string urlChiTiet = Url.Action("ChiTiet", "CongVanDen", new { id = cv.MSCV?.Trim() })!;
+                        <a href="@urlChiTiet" class="d-flex align-items-center gap-2 px-3 py-2"
+                           style="text-decoration:none;color:inherit;border-bottom:1px solid var(--border);">
+                            <i class="bi bi-eye-slash text-warning"></i>
+                            <div class="flex-grow-1" style="min-width:0;">
+                                <div class="text-truncate" style="font-size:13px;font-weight:600;">@cv.TrichYeu</div>
+                                <div class="fs-12 text-muted">@(cv.TenDVTat ?? cv.TenDVXL) — @cv.NgayDen.ToString("dd/MM/yyyy")</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart-fill text-success"></i>
+                <span class="card-title">Theo dõi xử lý</span>
+            </div>
+            <div class="card-body p-0">
+                <a asp-controller="CongVanDen" asp-action="DangXuLy"
+                   class="d-flex align-items-center justify-content-between px-4 py-3"
+                   style="text-decoration:none;color:inherit;border-bottom:1px solid var(--border);">
+                    <span style="font-size:14px;"><i class="bi bi-hourglass-split text-warning me-2"></i>Đang xử lý</span>
+                    <span style="font-weight:700;color:var(--warning);">@stats.GetValueOrDefault("DangXuLy",0)</span>
+                </a>
+                <a asp-controller="CongVanDen" asp-action="DangXuLyTre"
+                   class="d-flex align-items-center justify-content-between px-4 py-3"
+                   style="text-decoration:none;color:inherit;border-bottom:1px solid var(--border);">
+                    <span style="font-size:14px;"><i class="bi bi-alarm-fill text-danger me-2"></i>Xử lý trễ hạn</span>
+                    <span style="font-weight:700;color:var(--danger);">@stats.GetValueOrDefault("QuaHan",0)</span>
+                </a>
+                <a asp-controller="CongVanDen" asp-action="ChuaHoanThanh"
+                   class="d-flex align-items-center justify-content-between px-4 py-3"
+                   style="text-decoration:none;color:inherit;">
+                    <span style="font-size:14px;"><i class="bi bi-x-circle-fill text-secondary me-2"></i>Chưa hoàn thành</span>
+                    <i class="bi bi-chevron-right" style="color:var(--muted);font-size:12px;"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

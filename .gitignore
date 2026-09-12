@@ -1,0 +1,34 @@
+.vs/
+bin/
+obj/
+publish_folder/
+publish_folder.zip
+publish_linux/
+publish_linux.7z
+publish_linux.zip
+dp-keys/
+*.user
+.env
+db-backup/
+
+# Dữ liệu thật (chứa PII nhân viên/văn bản thật) — không bao giờ commit lên git
+db-init/*.sql
+db-init/*.sql.gz
+
+# Trạng thái nội bộ của tool (Claude Code) — không phải mã nguồn dự án, không commit
+.claude/
+.impeccable/
+
+# Script vận hành/deploy có HARDCODE mật khẩu SSH/SA thật của server production (tiện chạy tay
+# trong phiên làm việc nội bộ) — KHÔNG được đẩy lên repo public dưới bất kỳ hình thức nào. Vẫn nằm
+# trên máy này bình thường, chỉ không được git theo dõi. Nếu muốn đưa vào repo, phải refactor sang
+# đọc từ biến môi trường/.env trước.
+deploy-congvan.ps1
+run-migrations.ps1
+fix-prod-schema.ps1
+force-recreate-app.ps1
+bind-tailscale-5100.ps1
+check-port-5100.ps1
+apply-bind-mount-tainguyen.ps1
+upload-tainguyen.ps1
+DEPLOY.md

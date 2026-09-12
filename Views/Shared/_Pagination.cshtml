@@ -1,0 +1,51 @@
+@model CongVan.Models.PageInfo
+@{
+    // Giữ lại mọi query-string hiện có (bộ lọc) khi chuyển trang — chỉ đổi mỗi "page".
+    var routeValues = new Dictionary<string, string?>();
+    foreach (var kv in Context.Request.Query)
+    {
+        if (kv.Key.Equals("page", StringComparison.OrdinalIgnoreCase)) continue;
+        routeValues[kv.Key] = kv.Value.ToString();
+    }
+    string UrlVoiTrang(int trang)
+    {
+        var rv = new Dictionary<string, string?>(routeValues) { ["page"] = trang.ToString() };
+        return Url.Action(null, rv) ?? "#";
+    }
+    bool coTruoc = Model.Page > 1;
+    bool coSau = Model.Page < Model.TotalPages;
+}
+@if (Model.TotalCount > 0)
+{
+    <div class="pagination-bar">
+        <span class="pagination-info">
+            Trang <strong>@Model.Page</strong>/<strong>@Model.TotalPages</strong> — @Model.TotalCount kết quả
+        </span>
+        <div class="pagination-links">
+            <a class="btn btn-sm btn-outline-secondary @(coTruoc ? "" : "disabled")"
+               href="@(coTruoc ? UrlVoiTrang(1) : "#")" title="Trang đầu" aria-disabled="@(!coTruoc)">
+                <i class="bi bi-chevron-bar-left"></i>
+            </a>
+            <a class="btn btn-sm btn-outline-secondary @(coTruoc ? "" : "disabled")"
+               href="@(coTruoc ? UrlVoiTrang(Model.Page - 1) : "#")" title="Trang trước" aria-disabled="@(!coTruoc)">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <form method="get" class="pagination-jump" onsubmit="return true;">
+                @foreach (var kv in routeValues)
+                {
+                    <input type="hidden" name="@kv.Key" value="@kv.Value" />
+                }
+                <input type="number" name="page" min="1" max="@Model.TotalPages" value="@Model.Page"
+                       class="form-control form-control-sm" style="width:64px;text-align:center;" />
+            </form>
+            <a class="btn btn-sm btn-outline-secondary @(coSau ? "" : "disabled")"
+               href="@(coSau ? UrlVoiTrang(Model.Page + 1) : "#")" title="Trang sau" aria-disabled="@(!coSau)">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            <a class="btn btn-sm btn-outline-secondary @(coSau ? "" : "disabled")"
+               href="@(coSau ? UrlVoiTrang(Model.TotalPages) : "#")" title="Trang cuối" aria-disabled="@(!coSau)">
+                <i class="bi bi-chevron-bar-right"></i>
+            </a>
+        </div>
+    </div>
+}
