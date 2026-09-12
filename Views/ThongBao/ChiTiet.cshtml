@@ -1,0 +1,57 @@
+@model CongVan.Models.ThongBaoNoiBo
+@{
+    ViewData["Title"] = "Chi tiết thông báo";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool duocDang = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "ThongBao.Dang");
+    var maNVHienTai = (short)(ViewBag.MaNV ?? 0);
+    bool coTheXoa = duocDang || Model.MaNVDang == maNVHienTai;
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-megaphone-fill me-2 text-primary"></i>@Model.TieuDe</h1>
+        <p class="page-header-sub">
+            <span class="badge-status @Model.CssMucDo">@Model.TenMucDo</span>
+            <span class="ms-2">@Model.TenNVDang — @Model.NgayDang.ToString("dd/MM/yyyy HH:mm")</span>
+        </p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="white-space:pre-line;font-size:14.5px;line-height:1.7;">@Model.NoiDung</div>
+
+        @if (!string.IsNullOrEmpty(Model.FileDinhKem))
+        {
+            <div class="mt-3 d-flex gap-2">
+                <a href="/view/@Model.FileDinhKem" target="_blank" class="btn btn-outline-primary">
+                    <i class="bi bi-eye me-1"></i>Xem online
+                </a>
+                <a href="/files/@Model.FileDinhKem" class="btn btn-outline-secondary">
+                    <i class="bi bi-download me-1"></i>Tải file đính kèm
+                </a>
+            </div>
+        }
+
+        <div class="mt-3" style="font-size:12.5px;color:var(--muted);">
+            <i class="bi bi-people me-1"></i>Đối tượng nhận: @Model.TenDoiTuong
+        </div>
+    </div>
+    @if (coTheXoa)
+    {
+        <div class="card-body border-top">
+            <form asp-action="Xoa" method="post" onsubmit="return confirm('Xóa thông báo này?')">
+                <input type="hidden" name="maTB" value="@Model.MaTB" />
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-trash3-fill me-1"></i>Xóa thông báo
+                </button>
+            </form>
+        </div>
+    }
+</div>

@@ -1,0 +1,222 @@
+@model CongVan.Models.ThongBaoNoiBoFormViewModel
+@{ ViewData["Title"] = "Đăng thông báo"; }
+
+<div class="page-header">
+    <h1><i class="bi bi-megaphone-fill me-2 text-primary"></i>@ViewData["Title"]</h1>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Nội dung thông báo
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="ThongBaoNoiBo.TieuDe" id="inpTieuDe" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Nội dung <span class="form-required">*</span></label>
+                    <textarea asp-for="ThongBaoNoiBo.NoiDung" id="inpNoiDung" class="form-control" rows="6"></textarea>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Mức độ</label>
+                    <select asp-for="ThongBaoNoiBo.MucDo" class="form-select ts-select">
+                        <option value="1">Thường</option>
+                        <option value="2">Quan trọng</option>
+                        <option value="3">Khẩn</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Hết hạn hiển thị</label>
+                    <input asp-for="ThongBaoNoiBo.HetHan" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">File đính kèm <span class="text-muted fs-12">(không bắt buộc)</span></label>
+                    <input type="file" name="fileDinhKem" class="form-control" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">2</span>
+            Đối tượng nhận
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <select asp-for="ThongBaoNoiBo.DoiTuong" id="selDoiTuong" class="form-select ts-select" style="max-width:300px;">
+                        <option value="0">Toàn trường</option>
+                        <option value="1">Theo đơn vị</option>
+                        <option value="2">Theo vai trò (quyền)</option>
+                    </select>
+                </div>
+                <div class="col-12" id="khoiDonVi" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <label class="form-label mb-0">Chọn đơn vị nhận —
+                            <span id="dvDemChon" class="text-primary fw-700">0</span> / @Model.DanhSachDonVi.Count đơn vị
+                        </label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonDV(null,true)"><i class="bi bi-check-all me-1"></i>Tất cả</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonDV(['K'],true)">Tất cả khoa</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonDV(['P','B','T'],true)">Phòng/Ban/TT</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="chonDV(null,false)"><i class="bi bi-x-circle me-1"></i>Bỏ chọn</button>
+                        </div>
+                    </div>
+                    <input id="dvTimKiem" class="form-control form-control-sm mb-2" placeholder="Gõ để lọc nhanh tên đơn vị..." oninput="locDV(this.value)" />
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-1"
+                         id="dvGrid"
+                         style="max-height:290px;overflow-y:auto;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);">
+                        @foreach (var dv in Model.DanhSachDonVi)
+                        {
+                            <div class="col dv-item" data-ten="@(((dv.TenDV ?? "") + " " + (dv.TenTat ?? "")).ToLower())">
+                                <label class="form-check d-flex align-items-center gap-2 px-2 py-1 mb-0"
+                                       style="border-radius:var(--radius-sm);cursor:pointer;" for="dv_@dv.MaDV">
+                                    <input class="form-check-input dv-nhan mt-0" type="checkbox" name="dvNhan" value="@dv.MaDV" id="dv_@dv.MaDV"
+                                           data-loai="@(dv.LoaiDV ?? "")" onchange="demDV()"
+                                           @(Model.DanhSachDVNhan.Contains(dv.MaDV) ? "checked" : "") />
+                                    <span style="font-size:13px;line-height:1.35;">@dv.TenDV</span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-12" id="khoiQuyen" style="display:none;">
+                    <label class="form-label">Chọn vai trò nhận</label>
+                    <div class="d-flex flex-wrap gap-3" style="padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                        @foreach (var q in Model.DanhSachQuyen)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="quyenNhan" value="@q.MaQuyen" id="q_@q.MaQuyen"
+                                       @(Model.DanhSachQuyenNhan.Contains(q.MaQuyen) ? "checked" : "") />
+                                <label class="form-check-label" for="q_@q.MaQuyen" style="font-size:13px;">@q.TenQuyen</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-send-fill me-1"></i>Đăng thông báo
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+/* ── Chọn đơn vị nhận: chọn nhanh theo nhóm + lọc + đếm ── */
+function chonDV(loais, checked) {
+    document.querySelectorAll('.dv-nhan').forEach(function (cb) {
+        if (cb.closest('.dv-item').style.display === 'none') return;   // chỉ tác động mục đang hiện
+        if (loais === null || loais.indexOf(cb.dataset.loai) !== -1) cb.checked = checked;
+    });
+    demDV();
+}
+function locDV(tu) {
+    tu = (tu || '').trim().toLowerCase();
+    document.querySelectorAll('#dvGrid .dv-item').forEach(function (it) {
+        it.style.display = (!tu || it.dataset.ten.indexOf(tu) !== -1) ? '' : 'none';
+    });
+}
+function demDV() {
+    var n = document.querySelectorAll('.dv-nhan:checked').length;
+    var el = document.getElementById('dvDemChon');
+    if (el) el.textContent = n;
+}
+document.addEventListener('DOMContentLoaded', demDV);
+
+(function() {
+    function capNhatKhoi() {
+        var sel = document.getElementById('selDoiTuong');
+        var val = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+        document.getElementById('khoiDonVi').style.display = (val === '1') ? '' : 'none';
+        document.getElementById('khoiQuyen').style.display = (val === '2') ? '' : 'none';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        var sel = document.getElementById('selDoiTuong');
+        capNhatKhoi();
+        sel.addEventListener('change', capNhatKhoi);
+        if (sel.tomselect) sel.tomselect.on('change', capNhatKhoi);
+    });
+})();
+
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe',  label: 'Tiêu đề' },
+        { id: 'inpNoiDung', label: 'Nội dung' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim();
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

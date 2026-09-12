@@ -1,0 +1,274 @@
+@model CongVan.Models.VanBanNoiBoFormViewModel
+@{
+    bool isNew = Model.VanBanNoiBo.ID == 0;
+    ViewData["Title"] = isNew ? "Thêm văn bản nội bộ" : "Cập nhật văn bản nội bộ";
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-file-earmark-text me-2 text-primary"></i>@ViewData["Title"]</h1>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
+    <input asp-for="VanBanNoiBo.ID" type="hidden" />
+    <input asp-for="VanBanNoiBo.MaDV" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin văn bản
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="VanBanNoiBo.TieuDe" id="inpTieuDe" class="form-control" placeholder="Thông báo lịch trực Tết, Kế hoạch..." />
+                </div>
+                @if (isNew)
+                {
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label">Loại văn bản <span class="text-muted fs-12">(để tự sinh số hiệu)</span></label>
+                        <div class="d-flex gap-1">
+                            <select id="selLoai" name="VanBanNoiBo.LoaiVanBanNoiBo" class="form-select ts-select">
+                                <option value="">-- Tự nhập số hiệu --</option>
+                                @foreach (var m in Model.DanhSachMauSo)
+                                {
+                                    <option value="@m.MaLoai">@m.TenLoai (@m.MaLoai)</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" title="Thêm loại mới" data-bs-toggle="modal" data-bs-target="#modalMauSo">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label">Số hiệu <span class="text-muted fs-12">(vd: 12/TB-P.QTCSVC)</span></label>
+                    <input asp-for="VanBanNoiBo.SoHieu" id="inpSoHieu" class="form-control" placeholder="Tự đặt theo quy ước đơn vị, hoặc chọn Loại văn bản để tự sinh" />
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label">Ngày ban hành <span class="form-required">*</span></label>
+                    <input asp-for="VanBanNoiBo.NgayBanHanh" id="inpNgay" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label">Trạng thái</label>
+                    <select asp-for="VanBanNoiBo.TrangThai" class="form-select ts-select">
+                        <option value="0">Dự thảo</option>
+                        <option value="1">Đã ban hành</option>
+                        <option value="2">Thu hồi</option>
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Người ký (trong hệ thống)</label>
+                    <select asp-for="VanBanNoiBo.MaNVKy" class="form-select ts-select">
+                        <option value="">-- Không chọn --</option>
+                        @foreach (var nv in Model.DanhSachNhanVien)
+                        {
+                            <option value="@nv.MaNV">@nv.HoNV @nv.TenNV</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Người ký (tên tự do)</label>
+                    <input asp-for="VanBanNoiBo.NguoiKy" class="form-control" placeholder="Nếu người ký không có tài khoản trong hệ thống" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Nội dung</label>
+                    <textarea asp-for="VanBanNoiBo.NoiDung" class="form-control" rows="4"></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Đính kèm file @(isNew ? "" : "(nếu chọn, sẽ thêm file mới bên cạnh file đã có)")</label>
+                    <input type="file" name="file" class="form-control" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!isNew && Model.DanhSachFile.Any())
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-paperclip text-secondary"></i>
+                <span class="card-title">File đính kèm hiện có</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="app-table">
+                    <tbody>
+                        @foreach (var f in Model.DanhSachFile)
+                        {
+                            <tr>
+                                <td class="wrap-filename"><i class="bi bi-file-earmark me-1 text-secondary"></i>@f.TenFile</td>
+                                <td style="font-size:13px;color:var(--muted);">@f.NgayUpload.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td style="text-align:center;width:110px;">
+                                    <a asp-action="TaiFile" asp-route-fileId="@f.ID" class="btn btn-icon btn-outline-primary" title="Tải xuống">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-icon btn-outline-danger" title="Xóa file"
+                                            onclick="if(confirm('Xóa file này?')){document.getElementById('formXoaFile@(f.ID)').submit();}">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                    <form id="formXoaFile@(f.ID)" asp-action="XoaFile" method="post" class="d-none">
+                                        <input name="fileId" type="hidden" value="@f.ID" />
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu văn bản
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew)
+        {
+            <form asp-action="Xoa" method="post" class="d-inline ms-auto" onsubmit="return confirm('Xóa văn bản này? Toàn bộ file đính kèm sẽ bị xóa theo.')">
+                <input name="id" type="hidden" value="@Model.VanBanNoiBo.ID" />
+                <button type="submit" class="btn btn-outline-danger btn-lg">
+                    <i class="bi bi-trash3-fill me-1"></i>Xóa
+                </button>
+            </form>
+        }
+    </div>
+</form>
+
+@if (isNew)
+{
+    <!-- Modal thêm loại văn bản + mẫu số tự sinh (riêng của đơn vị) -->
+    <div class="modal fade" id="modalMauSo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-hash me-2 text-primary"></i>Thêm loại văn bản tự sinh số</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">
+                        Mỗi loại có 1 mẫu số hiệu riêng, tự đánh số theo năm. Placeholder dùng được: <code>{STT}</code>, <code>{STT2}</code> (02),
+                        <code>{STT3}</code> (002), <code>{NAM}</code> (2026), <code>{NAM2}</code> (26).
+                    </p>
+                    <label class="form-label">Mã loại <span class="form-required">*</span> <span class="text-muted fs-12">(ngắn gọn, vd "QĐ")</span></label>
+                    <input id="msMaLoai" class="form-control mb-2" maxlength="20" placeholder="QĐ" />
+                    <label class="form-label">Tên loại <span class="text-muted fs-12">(hiện trong danh sách chọn)</span></label>
+                    <input id="msTenLoai" class="form-control mb-2" placeholder="Quyết định" />
+                    <label class="form-label">Mẫu số hiệu <span class="form-required">*</span></label>
+                    <input id="msMauChuoi" class="form-control mb-2" placeholder="{STT2}/QĐ-P.QTCSVC" />
+                    <div id="msPreview" class="fs-12 text-muted"></div>
+                    <div id="msError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="themMauSo()">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe', label: 'Tiêu đề' },
+        { id: 'inpNgay', label: 'Ngày ban hành' },
+    ];
+
+    function isEmpty(el) { return !el || !el.value || !el.value.trim(); }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) { btn.disabled = !ok; btn.style.opacity = ok ? '' : '0.55'; }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt => el.addEventListener(evt, () => { el._dirty = true; validate(false); }));
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+
+var _soHieuTuGo = false;
+document.addEventListener('DOMContentLoaded', function () {
+    var inpSoHieu = document.getElementById('inpSoHieu');
+    var selLoai = document.getElementById('selLoai');
+    if (inpSoHieu) inpSoHieu.addEventListener('input', function () { _soHieuTuGo = true; });
+    if (selLoai) {
+        selLoai.addEventListener('change', function () {
+            var maLoai = selLoai.tomselect ? selLoai.tomselect.getValue() : selLoai.value;
+            if (!maLoai) return;
+            fetch('@Url.Action("GetNextSoHieuNoiBo")?maLoai=' + encodeURIComponent(maLoai))
+                .then(r => r.json())
+                .then(d => { if (!_soHieuTuGo && d.soHieu) inpSoHieu.value = d.soHieu; });
+        });
+    }
+});
+
+function themMauSo() {
+    var maLoai = document.getElementById('msMaLoai').value.trim();
+    var tenLoai = document.getElementById('msTenLoai').value.trim();
+    var mauChuoi = document.getElementById('msMauChuoi').value.trim();
+    var err = document.getElementById('msError');
+    if (!maLoai || !mauChuoi) { err.textContent = 'Vui lòng nhập mã loại và mẫu số hiệu'; err.style.display = ''; return; }
+
+    fetch('@Url.Action("ThemMauSo")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'maLoai=' + encodeURIComponent(maLoai) + '&tenLoai=' + encodeURIComponent(tenLoai) + '&mauChuoi=' + encodeURIComponent(mauChuoi)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi thêm loại văn bản'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+</script>
+}

@@ -1,0 +1,65 @@
+@model CongVan.Models.ThongBaoNoiBoFilterViewModel
+@{
+    ViewData["Title"] = "Thông báo";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool duocDang = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "ThongBao.Dang");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-megaphone-fill me-2 text-primary"></i>Thông báo</h1>
+    <div class="page-header-actions">
+        @if (duocDang)
+        {
+            <a asp-action="Nhap" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Đăng thông báo
+            </a>
+        }
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="fb-item">
+        <label class="form-label">Mức độ</label>
+        <select name="mucDo" class="form-select form-select-sm" style="width:160px;" onchange="this.form.submit()">
+            <option value="">Tất cả</option>
+            <option value="1" selected="@(Model.MucDo == 1)">Thường</option>
+            <option value="2" selected="@(Model.MucDo == 2)">Quan trọng</option>
+            <option value="3" selected="@(Model.MucDo == 3)">Khẩn</option>
+        </select>
+    </div>
+</form>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card"><div class="empty-state"><i class="bi bi-megaphone"></i><p>Chưa có thông báo nào</p></div></div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <ul class="list-unstyled mb-0">
+                @foreach (var tb in Model.DanhSach)
+                {
+                    <li class="d-flex align-items-start gap-3 px-3 py-3" style="border-bottom:1px solid var(--border);cursor:pointer;@(!tb.DaXem ? "background:#f0f5ff;" : "")"
+                        onclick="window.location.href='@Url.Action("ChiTiet", new { id = tb.MaTB })'">
+                        <i class="bi bi-megaphone-fill text-primary mt-1"></i>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-weight:@(tb.DaXem ? "500" : "700");font-size:14px;">@tb.TieuDe</span>
+                                <span class="badge-status @tb.CssMucDo" style="font-size:10.5px;padding:2px 6px;">@tb.TenMucDo</span>
+                                @if (!tb.DaXem)
+                                {
+                                    <span class="badge-status info" style="font-size:10.5px;padding:2px 6px;">Chưa đọc</span>
+                                }
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                                @tb.TenNVDang — @tb.NgayDang.ToString("dd/MM/yyyy HH:mm") — @tb.TenDoiTuong
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+}
