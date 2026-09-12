@@ -1,0 +1,112 @@
+@model CongVan.Models.CongVanDenListViewModel
+@{
+    ViewData["Title"] = "Sổ văn bản đến";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool coTheXacNhanHT = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "CongVanDen.XacNhanHoanThanh");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-inbox-fill me-2 text-primary"></i>Sổ văn bản đến</h1>
+</div>
+
+<partial name="_TabBar" />
+
+<div class="d-flex align-items-center mb-3">
+    <span style="font-size:13.5px;color:var(--muted);"><strong style="color:var(--text);">@Model.Trang.TotalCount</strong> văn bản đang xử lý</span>
+</div>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card">
+        <div class="empty-state">
+            <i class="bi bi-check-circle" style="color:var(--success);"></i>
+            <p>Không có văn bản nào đang xử lý</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable tbl-compact" style="table-layout:fixed;width:100%;">
+            <colgroup>
+                <col style="width:28px;">
+                <col style="width:84px;">
+                <col style="width:92px;">
+                <col style="width:140px;">
+                <col>
+                <col style="width:130px;">
+                <col style="width:88px;">
+                <col style="width:110px;">
+                <col style="width:72px;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Ngày đến</th>
+                    <th>Số CV</th>
+                    <th>Cơ quan</th>
+                    <th>Trích yếu</th>
+                    <th>Đơn vị xử lý</th>
+                    <th>Hạn xử lý</th>
+                    <th>Trạng thái</th>
+                    <th style="text-align:center;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @{ int i = 1 + (Model.Trang.Page - 1) * Model.Trang.PageSize; }
+            @foreach (var cv in Model.DanhSach)
+            {
+                bool overdue = cv.NgayYCHT.HasValue && cv.NgayYCHT < DateTime.Now;
+                string urlChiTiet = Url.Action("ChiTiet", "CongVanDen", new { id = cv.MSCV?.Trim() })!;
+                <tr class="@(overdue ? "tr-danger" : "")" onclick="rowNav(event,'@urlChiTiet')">
+                    <td class="fs-12 text-muted num-cell">@(i++)</td>
+                    <td class="fs-13 num-cell">@cv.NgayDen.ToString("dd/MM/yyyy")</td>
+                    <td class="num-cell" style="font-weight:700;">@(cv.STT1 ?? cv.STT.ToString())</td>
+                    <td class="td-ellipsis" title="@cv.TenCQ">@cv.TenCQ</td>
+                    <td class="td-ellipsis" title="@cv.TrichYeu">@cv.TrichYeu</td>
+                    <td class="td-ellipsis fs-13" title="@cv.TenDVXL">@cv.TenDVXL</td>
+                    <td class="fs-13" style="@(overdue?"font-weight:700;color:var(--danger);":"")">
+                        @cv.NgayYCHT?.ToString("dd/MM/yyyy")
+                    </td>
+                    <td>
+                        @if (overdue)
+                        { <span class="badge-status late"><i class="bi bi-alarm-fill"></i>Quá hạn</span> }
+                        else
+                        { <span class="badge-status pending"><i class="bi bi-hourglass"></i>Đang xử lý</span> }
+                    </td>
+                    <td style="text-align:center;white-space:nowrap;">
+                        <a href="@urlChiTiet" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-info" title="Xem chi tiết">
+                            <i class="bi bi-eye" style="font-size:12px;"></i>
+                        </a>
+                        @if (coTheXacNhanHT)
+                        {
+                            <button onclick="event.stopPropagation();danhDauHoanThanh('@cv.MSCV?.Trim()')"
+                                    class="btn btn-icon btn-outline-success ms-1" title="Xác nhận hoàn thành">
+                                <i class="bi bi-check-lg" style="font-size:12px;"></i>
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pagination" model="Model.Trang" />
+}
+
+@section Scripts {
+<script>
+function rowNav(e, url) {
+    if (e.target.closest('a,button')) return;
+    window.location.href = url;
+}
+function danhDauHoanThanh(mscv) {
+    if (!confirm('Xác nhận chính thức văn bản này đã hoàn thành?')) return;
+    fetch('@Url.Action("XacNhanHoanThanh")', {
+        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'mscv='+encodeURIComponent(mscv)
+    }).then(function(){ location.reload(); });
+}
+</script>
+}

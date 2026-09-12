@@ -1,0 +1,25 @@
+@{
+    // Partial dùng chung cho các màn hình "Công văn đến" — thay cho việc tách
+    // 6 mục menu riêng biệt, các trạng thái lọc giờ là các tab trên CÙNG 1 màn hình.
+    string action = (ViewContext.RouteData.Values["action"] as string ?? "").ToLower();
+}
+<div class="tab-bar">
+    <a class="tab-pill @(action=="index"?"active":"")" asp-controller="CongVanDen" asp-action="Index">
+        <i class="bi bi-list-ul"></i>Tất cả
+    </a>
+    <a class="tab-pill @(action=="dangxuly"?"active":"")" asp-controller="CongVanDen" asp-action="DangXuLy">
+        <i class="bi bi-hourglass-split"></i>Đang xử lý
+    </a>
+    <a class="tab-pill tone-danger @(action=="dangxulytre"?"active":"")" asp-controller="CongVanDen" asp-action="DangXuLyTre">
+        <i class="bi bi-alarm-fill"></i>Quá hạn
+    </a>
+    <a class="tab-pill tone-success @(action=="hoanthanhdunghan"?"active":"")" asp-controller="CongVanDen" asp-action="HoanThanhDungHan">
+        <i class="bi bi-check-circle-fill"></i>Hoàn thành đúng hạn
+    </a>
+    <a class="tab-pill tone-danger @(action=="hoanthanhtre"?"active":"")" asp-controller="CongVanDen" asp-action="HoanThanhTre">
+        <i class="bi bi-clock-history"></i>Hoàn thành trễ
+    </a>
+    <a class="tab-pill tone-warning @(action=="chuahoanthanh"?"active":"")" asp-controller="CongVanDen" asp-action="ChuaHoanThanh">
+        <i class="bi bi-exclamation-triangle-fill"></i>Chưa hoàn thành
+    </a>
+</div>

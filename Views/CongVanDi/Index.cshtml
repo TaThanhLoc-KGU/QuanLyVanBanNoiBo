@@ -1,0 +1,228 @@
+@model CongVan.Models.CongVanDiFilterViewModel
+@{ ViewData["Title"] = "Sổ văn bản đi"; }
+@{
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool CoQuyen(string ma) => CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, ma);
+    bool coTheNhap = CoQuyen("CongVanDi.Nhap") || (ViewBag.LaVanThuDonVi is bool lvtd && lvtd);
+    bool coTheExcel = CoQuyen("CongVanDi.Excel");
+    bool coTheXoa = CoQuyen("CongVanDi.Xoa");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-send-fill me-2 text-primary"></i>Sổ văn bản đi</h1>
+    <div class="page-header-actions">
+        <a asp-action="XuatExcel" asp-route-nam="@Model.Nam" asp-route-maSCV="@Model.MaSCV" asp-route-tuKhoa="@Model.TuKhoa"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+        </a>
+        @if (coTheExcel)
+        {
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNhapExcel">
+                <i class="bi bi-file-earmark-arrow-up me-1"></i>Nhập từ Excel
+            </button>
+        }
+        @if (coTheNhap)
+        {
+            <a asp-action="Nhap" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Vào số văn bản mới
+            </a>
+        }
+    </div>
+</div>
+
+<!-- Modal nhập văn bản đi từ Excel -->
+<div class="modal fade" id="modalNhapExcel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="NhapExcel" method="post" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Nhập văn bản đi từ Excel</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">
+                        Tải file mẫu bên dưới. Mở bằng Excel, các ô <strong>Sổ văn bản, Loại văn bản, Người ký,
+                        Đơn vị soạn thảo, Đơn vị nhận (1)(2)(3)</strong> đều có <strong>mũi tên xổ xuống để chọn</strong>
+                        (danh sách lấy từ sheet "DanhMuc"). Gửi cho quá 3 đơn vị thì ghi thêm vào cột
+                        <strong>"Đơn vị nhận khác"</strong> (tên viết tắt hoặc mã, cách nhau dấu <code>;</code>).
+                        <strong>Gửi cho tất cả:</strong> chọn / gõ <code>(TẤT CẢ ĐƠN VỊ)</code>,
+                        <code>(TẤT CẢ KHOA)</code> hoặc <code>(TẤT CẢ PHÒNG/BAN/TT)</code> ở cột Đơn vị nhận.
+                        Cột Đơn vị soạn thảo / Người soạn thảo <strong>không bắt buộc</strong>.
+                    </p>
+                    <a asp-action="TaiMauExcel" class="btn btn-sm btn-outline-primary mb-3">
+                        <i class="bi bi-download me-1"></i>Tải file mẫu (kèm danh mục)
+                    </a>
+                    <label class="form-label">Chọn file Excel (.xlsx)</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required />
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="taoVanBanDen" value="true" id="taoVanBanDen" checked />
+                        <label class="form-check-label fs-13" for="taoVanBanDen">
+                            Tạo <strong>văn bản đến</strong> cho các đơn vị nội bộ đã ghi ở cột "Đơn vị nội bộ nhận"
+                            <span class="text-muted">(không tự gửi email — bỏ tick nếu chỉ muốn vào sổ)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i>Nhập file
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="fb-item">
+        <label class="form-label">Năm</label>
+        <select name="nam" class="form-select form-select-sm" style="width:104px;">
+            @for (int y = DateTime.Now.Year; y >= 2020; y--)
+            {
+                <option value="@y" selected="@(Model.Nam == y)">@y</option>
+            }
+        </select>
+    </div>
+    <div class="fb-item">
+        <label class="form-label">Sổ văn bản</label>
+        <select name="maSCV" class="form-select form-select-sm" style="width:200px;">
+            <option value="">Tất cả sổ</option>
+            @foreach (var s in Model.DanhSachSoCV)
+            {
+                <option value="@s.MaSCV" selected="@(Model.MaSCV == s.MaSCV)">@s.TenSCV</option>
+            }
+        </select>
+    </div>
+    <div class="fb-item fb-grow">
+        <label class="form-label">Tìm kiếm</label>
+        <input name="tuKhoa" class="form-control form-control-sm" placeholder="Số văn bản, trích yếu..." value="@Model.TuKhoa" />
+    </div>
+    <div class="fb-item">
+        <label class="form-label">&nbsp;</label>
+        <label class="form-check d-flex align-items-center gap-2" style="min-height:36px;white-space:nowrap;">
+            <input type="checkbox" name="chiCongKhai" value="true" class="form-check-input mt-0" @(Model.ChiCongKhai ? "checked" : "") />
+            <span class="fs-13"><i class="bi bi-globe2 text-success me-1"></i>Chỉ văn bản công khai</span>
+        </label>
+    </div>
+    <div class="fb-actions">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Xóa lọc</a>
+    </div>
+</form>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card"><div class="empty-state"><i class="bi bi-send"></i><p>Không có văn bản đi nào</p></div></div>
+}
+else
+{
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;">Tìm thấy <strong style="color:var(--text);">@Model.DanhSach.Count</strong> văn bản</div>
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable tbl-compact" style="width:100%;min-width:900px;">
+            <colgroup>
+                <col style="width:118px;">
+                <col style="width:90px;">
+                <col style="width:90px;">
+                <col style="width:110px;">
+                <col>
+                <col style="width:130px;">
+                <col style="width:150px;">
+                <col style="width:52px;">
+                <col style="width:56px;">
+                <col style="width:@(coTheXoa ? "88px" : "52px")">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Số Văn bản</th>
+                    <th>Ngày văn bản</th>
+                    <th>Ngày ban hành</th>
+                    <th>Loại văn bản</th>
+                    <th>Trích yếu</th>
+                    <th>Người ký</th>
+                    <th>Nơi nhận</th>
+                    <th style="text-align:center;">Số lượng</th>
+                    <th style="text-align:center;"><i class="bi bi-paperclip"></i></th>
+                    <th style="text-align:center;">@(coTheXoa ? "Sửa / Xóa" : "Sửa")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var cv in Model.DanhSach)
+            {
+                string urlChiTiet = Url.Action("ChiTiet","CongVanDi",new{id=cv.MSCV?.Trim()})!;
+                var tenDVNhan = new List<string>();
+                if (!string.IsNullOrEmpty(cv.DonViNhan))
+                {
+                    foreach (var part in cv.DonViNhan.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (byte.TryParse(part.Trim(), out var maDV))
+                        {
+                            var dv = Model.DanhSachDonVi.FirstOrDefault(d => d.MaDV == maDV);
+                            if (dv != null) tenDVNhan.Add(dv.TenTat ?? dv.TenDV);
+                        }
+                    }
+                }
+                string noiNhanHienThi = tenDVNhan.Any() ? string.Join(", ", tenDVNhan) : (cv.NoiNhanCV ?? "");
+                <tr onclick="rowNav(event,'@urlChiTiet')">
+                    <td style="font-weight:700;">
+                        <a href="@urlChiTiet" style="color:var(--primary);text-decoration:none;">@(cv.STT1 ?? cv.STT.ToString())</a>
+                        @if (cv.CongKhai)
+                        {
+                            <i class="bi bi-globe2 text-success ms-1" title="Đã công khai" style="font-size:11px;"></i>
+                        }
+                    </td>
+                    <td class="fs-13 num-cell">@cv.NgayCongVan.ToString("dd/MM/yyyy")</td>
+                    <td class="fs-13 num-cell">@cv.NgayBanHanh.ToString("dd/MM/yyyy")</td>
+                    <td class="fs-13">@cv.TenLVB</td>
+                    <td>@cv.TrichYeu</td>
+                    <td class="fs-13">@cv.TenLDKy</td>
+                    <td class="fs-13">@noiNhanHienThi</td>
+                    <td style="text-align:center;font-size:14px;">@cv.SoLuong</td>
+                    <td style="text-align:center;white-space:nowrap;">
+                        @if (cv.DaKySo)
+                        {
+                            <i class="bi bi-patch-check-fill text-success me-1" title="Đã ký số@(!string.IsNullOrEmpty(cv.LoaiChungThu) ? $" — {cv.LoaiChungThu}" : "")"></i>
+                        }
+                        @if (!string.IsNullOrEmpty(cv.FileDinhKem))
+                        {
+                            <a href="/view/@cv.FileDinhKem" target="_blank" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-primary" title="Xem online">
+                                <i class="bi bi-eye" style="font-size:12px;"></i>
+                            </a>
+                            <a href="/files/@cv.FileDinhKem" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-secondary" title="Tải file">
+                                <i class="bi bi-download" style="font-size:12px;"></i>
+                            </a>
+                        }
+                    </td>
+                    <td style="text-align:center;">
+                        @if (coTheNhap)
+                        {
+                            <a asp-action="Nhap" asp-route-id="@cv.MSCV?.Trim()" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-primary" title="Sửa">
+                                <i class="bi bi-pencil" style="font-size:12px;"></i>
+                            </a>
+                        }
+                        @if (coTheXoa)
+                        {
+                            <form asp-action="Xoa" method="post" class="d-inline" onclick="event.stopPropagation();"
+                                  onsubmit="return confirm('Xóa hẳn văn bản &quot;@(cv.STT1 ?? cv.STT.ToString())&quot; khỏi sổ?\n\nMọi bản ghi liên quan (văn bản đến ở đơn vị nhận, văn bản điều hành) cũng bị xóa và KHÔNG khôi phục được.');">
+                                <input type="hidden" name="mscv" value="@cv.MSCV?.Trim()" />
+                                <button type="submit" class="btn btn-icon btn-outline-danger" title="Xóa">
+                                    <i class="bi bi-trash3" style="font-size:12px;"></i>
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+<script>
+function rowNav(e, url) {
+    if (e.target.closest('a,button')) return;
+    window.location.href = url;
+}
+</script>
+}

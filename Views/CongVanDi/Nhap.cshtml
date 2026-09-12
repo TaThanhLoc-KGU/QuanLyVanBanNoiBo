@@ -1,0 +1,350 @@
+@model CongVan.Models.CongVanDiFormViewModel
+@{
+    bool isNew = string.IsNullOrEmpty(Model.CongVanDi.MSCV);
+    ViewData["Title"] = isNew ? "Vào số văn bản đi" : "Cập nhật văn bản đi";
+}
+
+<div class="page-header">
+    <h1>
+        <i class="bi bi-send-fill me-2 text-primary"></i>
+        @ViewData["Title"]
+    </h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
+    <input asp-for="CongVanDi.MSCV" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin văn bản đi
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Sổ văn bản <span class="form-required">*</span></label>
+                    <select asp-for="CongVanDi.MaSCV" id="selSCVDi" class="form-select ts-select">
+                        @foreach (var s in Model.DanhSachSoCV)
+                        { <option value="@s.MaSCV">@s.TenSCV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Loại văn bản <span class="form-required">*</span></label>
+                    <select asp-for="CongVanDi.MaLVB" id="selLVBDi" class="form-select ts-select">
+                        <option value="">-- Chọn loại --</option>
+                        @foreach (var lv in Model.DanhSachLoaiVB)
+                        { <option value="@lv.MaLVB">@lv.TenLVB</option> }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-3 col-lg-2">
+                    <label class="form-label">
+                        STT @if (isNew) { <span class="text-muted fs-12">(tự động)</span> }
+                    </label>
+                    <input asp-for="CongVanDi.STT" id="inpSTTDi" class="form-control" />
+                </div>
+                <div class="col-6 col-sm-9 col-lg-4">
+                    <label class="form-label">
+                        Số văn bản @if (isNew) { <span class="text-muted fs-12">(tự sinh nếu sổ đã cấu hình mẫu số — có thể sửa lại)</span> }
+                    </label>
+                    <input asp-for="CongVanDi.STT1" id="inpSTT1Di" class="form-control" placeholder="123/QĐ-VNKGU" />
+                </div>
+
+                <div class="col-6 col-sm-4 col-lg-3">
+                    <label class="form-label">Ngày văn bản <span class="form-required">*</span></label>
+                    <input asp-for="CongVanDi.NgayCongVan" type="date" class="form-control" />
+                </div>
+                <div class="col-6 col-sm-4 col-lg-3">
+                    <label class="form-label">Ngày ban hành / phát hành</label>
+                    <input asp-for="CongVanDi.NgayBanHanh" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-4 col-lg-3">
+                    <label class="form-label">Người ký</label>
+                    <select asp-for="CongVanDi.MaLDKy" class="form-select ts-select">
+                        <option value="0">-- Chọn --</option>
+                        @foreach (var ld in Model.DanhSachLanhDao)
+                        { <option value="@ld.MaNV">@ld.HoTen</option> }
+                    </select>
+                </div>
+                <div class="col-sm-4 col-lg-3">
+                    <label class="form-label">Số lượng phát hành</label>
+                    <input asp-for="CongVanDi.SoLuong" type="number" class="form-control" min="1" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Đơn vị soạn thảo <span class="text-muted fs-12">(không bắt buộc)</span></label>
+                    <select asp-for="CongVanDi.DonViSoanThao" class="form-select ts-select">
+                        <option value="">-- Chọn đơn vị --</option>
+                        @foreach (var dv in Model.DanhSachDonVi)
+                        {
+                            var ten = string.IsNullOrWhiteSpace(dv.TenTat) ? dv.TenDV : dv.TenTat;
+                            <option value="@ten" selected="@(Model.CongVanDi.DonViSoanThao == ten)">@dv.TenDV</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Người soạn thảo <span class="text-muted fs-12">(không bắt buộc)</span></label>
+                    <input asp-for="CongVanDi.NguoiSoanThao" class="form-control" placeholder="VD: Nguyễn Văn A" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Trích yếu <span class="form-required">*</span></label>
+                    <textarea asp-for="CongVanDi.TrichYeu" class="form-control" rows="2" placeholder="Nhập trích yếu văn bản..."></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Nơi nhận khác <span class="text-muted fs-12">(ngoài trường, hoặc ghi chú thêm nơi nhận)</span></label>
+                    <textarea asp-for="CongVanDi.NoiNhanCV" class="form-control" rows="3" placeholder="VD: Kho bạc Nhà nước tỉnh Kiên Giang..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ghi chú</label>
+                    <textarea asp-for="CongVanDi.GhiChu" class="form-control" rows="3" placeholder="Ghi chú thêm (nếu có)..."></textarea>
+                </div>
+
+                <div class="col-sm-4">
+                    <label class="form-label">Nhóm văn bản</label>
+                    <select asp-for="CongVanDi.MaNCV" class="form-select ts-select">
+                        <option value="">-- Chọn nhóm --</option>
+                        @foreach (var nc in Model.DanhSachNhomCV)
+                        { <option value="@nc.MaNCV">@nc.TenNCV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">Phúc đáp văn bản đến</label>
+                    <input asp-for="CongVanDi.MSCVDen" class="form-control" placeholder="Mã văn bản đến (nếu có)" />
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">
+                        File đính kèm
+                        <span class="text-muted fs-12">(không bắt buộc — có thể bổ sung sau)</span>
+                    </label>
+                    <input type="file" name="fileDinhKem" class="form-control" />
+                    @if (!string.IsNullOrEmpty(Model.CongVanDi.FileDinhKem))
+                    {
+                        <div class="mt-2 d-flex gap-2">
+                            <a href="/view/@Model.CongVanDi.FileDinhKem" target="_blank" class="btn btn-xs btn-outline-primary">
+                                <i class="bi bi-eye me-1"></i>Xem
+                            </a>
+                            <a href="/files/@Model.CongVanDi.FileDinhKem" class="btn btn-xs btn-outline-secondary">
+                                <i class="bi bi-download me-1"></i>Tải file hiện tại
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">2</span>
+            Đơn vị nội bộ nhận
+        </div>
+        <div class="form-section-body">
+            <p class="text-muted fs-13 mb-2">
+                Chọn (các) đơn vị trong trường sẽ nhận văn bản này — đơn vị được chọn sẽ thấy văn bản
+                trong mục "Tra cứu văn bản đơn vị" và nhận email thông báo.
+            </p>
+            <div class="d-flex gap-2 flex-wrap mb-2">
+                <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaDVNhan()">
+                    <i class="bi bi-check-all me-1"></i>Tất cả đơn vị
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaKhoaNhan()">
+                    <i class="bi bi-check-all me-1"></i>Tất cả các khoa
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaPhongNhan()">
+                    <i class="bi bi-check-all me-1"></i>Tất cả phòng/ban/TT
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-danger" onclick="boChonTatCaDVNhan()">
+                    <i class="bi bi-x-circle me-1"></i>Bỏ chọn tất cả
+                </button>
+            </div>
+            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+                 style="max-height:230px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                @foreach (var dv in Model.DanhSachDonVi)
+                {
+                    <div class="col">
+                        <div class="form-check">
+                            <input class="form-check-input dv-nhan" type="checkbox"
+                                   name="dvNhan" value="@dv.MaDV"
+                                   id="dvnhan_@dv.MaDV"
+                                   data-loai="@(dv.LoaiDV ?? "")"
+                                   @(Model.DanhSachDVNhan.Contains(dv.MaDV) ? "checked" : "") />
+                            <label class="form-check-label" for="dvnhan_@dv.MaDV" style="font-size:13px;">@dv.TenDV</label>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (isNew)
+            {
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="cungLaVanBanDieuHanh" value="true" id="cungLaVanBanDieuHanh" />
+                    <label class="form-check-label" for="cungLaVanBanDieuHanh">
+                        Văn bản này <strong>cũng là văn bản điều hành</strong>
+                        <span class="text-muted fs-12">(tự động thêm 1 bản ghi tương ứng vào Sổ văn bản điều hành, dùng chung số ký hiệu)</span>
+                    </label>
+                </div>
+            }
+
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="congKhai" value="true" id="congKhai"
+                       @(Model.CongVanDi.CongKhai ? "checked" : "") />
+                <label class="form-check-label" for="congKhai">
+                    <i class="bi bi-globe2 text-success me-1"></i><strong>Công khai văn bản này</strong>
+                    <span class="text-muted fs-12">(cho phép hiển thị ra ngoài qua cổng công khai — kèm cả file đính kèm)</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu văn bản
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew)
+        {
+            <button type="submit" form="frmXoaCVDi" class="btn btn-outline-danger btn-lg ms-auto"
+                    onclick="return confirm('Xóa văn bản này? Mọi bản ghi liên quan (văn bản đến ở đơn vị nhận, văn bản điều hành) cũng bị xóa.')">
+                <i class="bi bi-trash3-fill me-1"></i>Xóa
+            </button>
+        }
+    </div>
+</form>
+
+@if (!isNew)
+{
+    <form id="frmXoaCVDi" asp-action="Xoa" method="post" hidden>
+        <input name="mscv" type="hidden" value="@Model.CongVanDi.MSCV" />
+    </form>
+}
+
+@section Scripts {
+<script>
+function setDVNhanByLoai(loais, checked) {
+    document.querySelectorAll('.dv-nhan').forEach(cb => {
+        if (loais === null || loais.includes(cb.dataset.loai)) cb.checked = checked;
+    });
+}
+function chonTatCaDVNhan()  { setDVNhanByLoai(null, true); }
+function boChonTatCaDVNhan(){ setDVNhanByLoai(null, false); }
+function chonTatCaKhoaNhan(){ setDVNhanByLoai(['K'], true); }
+function chonTatCaPhongNhan(){ setDVNhanByLoai(['P','B','T'], true); }
+
+@if (isNew)
+{
+    <text>
+    function laySoKyHieuDi() {
+        var selSCV = document.getElementById('selSCVDi');
+        var selLVB = document.getElementById('selLVBDi');
+        var maSCV = selSCV?.tomselect ? selSCV.tomselect.getValue() : selSCV?.value;
+        var maLVB = selLVB?.tomselect ? selLVB.tomselect.getValue() : selLVB?.value;
+        if (!maSCV) return;
+        var inpSTT1 = document.getElementById('inpSTT1Di');
+        // Chỉ tự điền nếu người dùng chưa tự gõ số văn bản khác với giá trị tự sinh trước đó
+        if (inpSTT1._daTuGo) return;
+        fetch('@Url.Action("GetNextSoKyHieu", "CongVanDi")?maSCV=' + maSCV + '&maLVB=' + (maLVB || ''))
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('inpSTTDi').value = data.stt;
+                if (data.soKyHieu) {
+                    inpSTT1.value = data.soKyHieu;
+                    inpSTT1._tuSinh = data.soKyHieu;
+                }
+            });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        var inpSTT1 = document.getElementById('inpSTT1Di');
+        inpSTT1.addEventListener('input', () => {
+            if (inpSTT1.value !== inpSTT1._tuSinh) inpSTT1._daTuGo = true;
+        });
+        laySoKyHieuDi();
+        ['selSCVDi', 'selLVBDi'].forEach(id => {
+            var sel = document.getElementById(id);
+            if (!sel) return;
+            sel.addEventListener('change', laySoKyHieuDi);
+            if (sel.tomselect) sel.tomselect.on('change', laySoKyHieuDi);
+        });
+    });
+    </text>
+}
+
+// ── Validation required fields ──────────────────────────────────
+(function() {
+    const REQ = [
+        { id: 'selSCVDi',              label: 'Sổ văn bản' },
+        { id: 'selLVBDi',              label: 'Loại văn bản' },
+        { id: 'CongVanDi_NgayCongVan', label: 'Ngày văn bản' },
+        { id: 'CongVanDi_TrichYeu',    label: 'Trích yếu' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim() || el.value === '0';
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+            if (el.tomselect) el.tomselect.on('change', () => { el._dirty = true; validate(false); });
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

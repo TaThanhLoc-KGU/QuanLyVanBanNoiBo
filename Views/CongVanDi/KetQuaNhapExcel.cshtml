@@ -1,0 +1,41 @@
+@model CongVan.Models.KetQuaNhapExcelViewModel
+@{ ViewData["Title"] = "Kết quả nhập Excel"; }
+
+<div class="page-header">
+    <h1><i class="bi bi-file-earmark-excel me-2 text-primary"></i>Kết quả nhập văn bản đi từ Excel</h1>
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Về Sổ văn bản đi
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body d-flex align-items-center gap-3">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:28px;"></i>
+        <div>
+            <div style="font-size:16px;font-weight:700;">Đã nhập thành công @Model.SoDongThanhCong văn bản</div>
+            <div class="fs-13 text-muted">Đơn vị nội bộ ghi ở file (nếu có) đã được tạo văn bản đến tương ứng — <strong>không tự gửi email</strong>; vào từng văn bản đến để bấm gửi khi cần.</div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Loi.Any())
+{
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+            <span class="card-title">Dòng bị bỏ qua (@Model.Loi.Count)</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="app-table">
+                <tbody>
+                    @foreach (var loi in Model.Loi)
+                    {
+                        <tr><td class="fs-13" style="color:var(--danger);">@loi</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

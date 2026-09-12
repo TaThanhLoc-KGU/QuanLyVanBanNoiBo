@@ -1,0 +1,1123 @@
+@model CongVan.Models.CongVanDen
+@{
+    ViewData["Title"] = "Chi tiết văn bản đến";
+    var lichSu  = ViewBag.LichSuXuLy as List<CongVan.Models.CVDen_QTXL> ?? new();
+    var dvGiao  = ViewBag.DVDaGiao   as List<CongVan.Models.CVDen_DV>   ?? new();
+    var files   = ViewBag.FileDinhKem as List<CongVan.Models.CVDenFile>  ?? new();
+    var donVi   = ViewBag.DonVi      as List<CongVan.Models.DonVi>      ?? new();
+    var quyen   = ViewBag.QuyenList  as List<int> ?? new();
+    var xuLyDV  = ViewBag.XuLyDV    as List<CongVan.Models.CongVanDenXuLyDV> ?? new();
+    var filesByXuLyDV = ViewBag.FilesByXuLyDV as Dictionary<int, List<CongVan.Models.CVDenXuLyDVFile>> ?? new();
+    var chiDao  = ViewBag.ChiDao    as List<CongVan.Models.CongVanDenChiDao> ?? new();
+    var lanhDao = ViewBag.LanhDao   as List<CongVan.Models.NhanVien> ?? new();
+
+    bool daXNHT  = Model.NgayXNHTCV.HasValue;
+    bool daHT    = Model.NgayHT.HasValue || daXNHT;
+    bool quaHan  = !daHT && Model.NgayYCHT.HasValue && Model.NgayYCHT < DateTime.Now;
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool CoQuyen(string ma) => CongVan.Models.ChucNangDangKy.CoQuyen(quyen, chucNang, ma);
+    bool coTheNhap = CoQuyen("CongVanDen.Nhap");
+    bool coTheXacNhanHT = CoQuyen("CongVanDen.XacNhanHoanThanh");
+    bool coTheGuiEmail = ViewBag.CoTheGuiEmail as bool? ?? false;
+    bool isBGH   = CoQuyen("CongVanDen.BGHTraLoiYKien");
+    short maNVSession = (short)(ViewBag.MaNV ?? 0);
+    var maDVCoTheXuLy = ViewBag.MaDVCoTheXuLy as HashSet<byte> ?? new();
+    var maDVLaLanhDao = ViewBag.MaDVLaLanhDao as HashSet<byte> ?? new();
+
+    var dvPhoiHop = new List<CongVan.Models.DonVi>();
+    if (!string.IsNullOrEmpty(Model.BoPhanPhoiHop))
+    {
+        foreach (var part in Model.BoPhanPhoiHop.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (byte.TryParse(part.Trim(), out var maDV))
+            {
+                var dv = donVi.FirstOrDefault(d => d.MaDV == maDV);
+                if (dv != null) dvPhoiHop.Add(dv);
+            }
+        }
+    }
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-file-earmark-text me-2 text-primary"></i>Chi tiết văn bản đến</h1>
+        <p class="page-header-sub">Mã số: @Model.MSCV?.Trim()</p>
+    </div>
+    <div class="page-header-actions">
+        @if (daHT)
+        {
+            <span class="badge-status done" style="padding:7px 14px;font-size:13.5px;">
+                <i class="bi bi-check-circle-fill"></i>Đã hoàn thành
+                @if (Model.NgayHT.HasValue) { <span>— @Model.NgayHT.Value.ToString("dd/MM/yyyy")</span> }
+            </span>
+        }
+        else
+        {
+            <span class="badge-status @Model.TrangThaiCss" style="padding:7px 14px;font-size:13.5px;">
+                <i class="bi @Model.TrangThaiIcon"></i>@(Model.TrangThaiCode == "moi" ? "Mới nhận" : Model.TrangThaiLabel)
+            </span>
+        }
+        @if (coTheXacNhanHT && !daXNHT)
+        {
+            <form asp-action="XacNhanHoanThanh" method="post" class="d-inline">
+                <input type="hidden" name="mscv" value="@Model.MSCV?.Trim()" />
+                <button type="submit" class="btn btn-sm btn-success"
+                        onclick="return confirm('Xác nhận chính thức văn bản này đã hoàn thành?')">
+                    <i class="bi bi-patch-check-fill me-1"></i>Xác nhận hoàn thành
+                </button>
+            </form>
+        }
+        @if (coTheXacNhanHT && daXNHT)
+        {
+            <form asp-action="HuyXacNhanHT" method="post" class="d-inline">
+                <input type="hidden" name="mscv" value="@Model.MSCV?.Trim()" />
+                <button type="submit" class="btn btn-sm btn-outline-warning"
+                        onclick="return confirm('Hủy xác nhận hoàn thành?')">
+                    <i class="bi bi-x-circle me-1"></i>Hủy xác nhận
+                </button>
+            </form>
+        }
+        @if (coTheNhap)
+        {
+            <a asp-action="Nhap" asp-route-id="@Model.MSCV?.Trim()" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+            </a>
+        }
+        @if (CoQuyen("CongVanDen.Xoa"))
+        {
+            <form asp-action="Xoa" method="post" class="d-inline">
+                <input type="hidden" name="mscv" value="@Model.MSCV?.Trim()" />
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        onclick="return confirm('Xóa hẳn văn bản này khỏi sổ?\n\nDùng khi nhập nhầm hoặc trùng lặp — sau khi xóa sẽ KHÔNG thể khôi phục lại được. Bạn có chắc chắn?')">
+                    <i class="bi bi-trash3 me-1"></i>Xóa văn bản
+                </button>
+            </form>
+        }
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3" style="padding:20px 28px 22px;">
+    <div class="status-stepper lg">
+        <div class="step done">
+            <div class="step-dot"></div>
+            <div>
+                <div>Tiếp nhận</div>
+                <div style="font-weight:400;color:var(--muted);font-size:11px;margin-top:2px;">@Model.NgayDen.ToString("dd/MM/yyyy")</div>
+            </div>
+        </div>
+        <div class="step-line @(daHT ? "done" : "")"></div>
+        <div class="step @(daHT ? "done" : (quaHan ? "overdue" : "current"))">
+            <div class="step-dot"></div>
+            <div>
+                <div>Đang xử lý</div>
+                <div style="font-weight:400;font-size:11px;margin-top:2px;color:@(quaHan && !daHT ? "var(--danger)" : "var(--muted)");">
+                    @(daHT ? "Đã qua" : (quaHan ? "Quá hạn xử lý" : (Model.NgayYCHT.HasValue ? "Hạn " + Model.NgayYCHT.Value.ToString("dd/MM/yyyy") : "Chưa có hạn")))
+                </div>
+            </div>
+        </div>
+        <div class="step-line @(daHT ? "done" : "")"></div>
+        <div class="step @(daHT ? "done" : "pending")">
+            <div class="step-dot"></div>
+            <div>
+                <div>Hoàn thành</div>
+                <div style="font-weight:400;color:var(--muted);font-size:11px;margin-top:2px;">
+                    @(daHT && Model.NgayHT.HasValue ? Model.NgayHT.Value.ToString("dd/MM/yyyy") : "Chưa hoàn thành")
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    byte maDVMe = (byte)ViewBag.MaDV;
+    var rowMe = xuLyDV.FirstOrDefault(r => r.MaDV == maDVMe);
+    bool dangMoMe = rowMe != null && rowMe.TrangThai != 3 && rowMe.TrangThai != 4;
+    bool coTheXuLyMe = rowMe != null && maDVCoTheXuLy.Contains(maDVMe) && dangMoMe && !daXNHT;
+}
+@if (coTheXuLyMe)
+{
+    <div class="card mb-3" style="border-left:4px solid var(--primary);">
+        <div class="card-body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 20px;">
+            <div style="flex:1;min-width:220px;">
+                <div style="font-size:11.5px;color:var(--muted);font-weight:600;">
+                    <i class="bi bi-building me-1"></i>Việc của đơn vị bạn — @(rowMe!.TenDVTat ?? rowMe.TenDV)
+                </div>
+                <div style="margin-top:4px;">
+                    <span class="badge-status @rowMe.CssBadge" style="font-size:11.5px;">@rowMe.TenTrangThai</span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-1">
+                @if (rowMe.TrangThai < 1)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-info"
+                            onclick="capNhatTT('@Model.MSCV?.Trim()',@rowMe.MaDV,1,'Xác nhận đã tiếp nhận văn bản này?')">
+                        <i class="bi bi-check me-1"></i>Tiếp nhận
+                    </button>
+                }
+                @if (rowMe.TrangThai < 2)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-warning"
+                            onclick="capNhatTT('@Model.MSCV?.Trim()',@rowMe.MaDV,2,'Đánh dấu đang xử lý?')">
+                        <i class="bi bi-hourglass me-1"></i>Đang xử lý
+                    </button>
+                }
+                @if (rowMe.TrangThai < 3)
+                {
+                    <button type="button" class="btn btn-sm btn-success"
+                            onclick="capNhatTT('@Model.MSCV?.Trim()',@rowMe.MaDV,3,'Xác nhận đơn vị bạn đã hoàn thành xử lý?')">
+                        <i class="bi bi-check-circle me-1"></i>Hoàn thành
+                    </button>
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="moUpload(@rowMe.ID,'@Model.MSCV?.Trim()')" title="Tải file kết quả xử lý lên">
+                    <i class="bi bi-upload"></i>
+                </button>
+                <a href="#xulydvCard" class="btn btn-sm btn-outline-primary" title="Xem chi tiết mọi đơn vị liên quan">
+                    <i class="bi bi-list-ul me-1"></i>Chi tiết
+                </a>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row g-3">
+    <!-- ══ CỘT TRÁI ══ -->
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle text-primary"></i>
+                <span class="card-title">Thông tin văn bản</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl">Số văn bản</th>
+                        <td class="detail-val" style="font-weight:700;font-size:16px;">@(Model.STT1 ?? Model.STT.ToString())</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày đến</th>
+                        <td class="detail-val">@Model.NgayDen.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(Model.MSCVDi))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Văn bản đi liên quan</th>
+                            <td class="detail-val">
+                                <a asp-controller="CongVanDi" asp-action="ChiTiet" asp-route-id="@Model.MSCVDi?.Trim()"
+                                   style="color:var(--primary);">
+                                    <i class="bi bi-send-fill me-1"></i>Xem văn bản đi gốc — @Model.MSCVDi?.Trim()
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <th class="detail-lbl">Cơ quan phát hành</th>
+                        <td class="detail-val">@Model.TenCQ</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày ban hành</th>
+                        <td class="detail-val">@Model.NgayBanHanh.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Loại văn bản</th>
+                        <td class="detail-val">@Model.TenLVB</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Nhóm văn bản</th>
+                        <td class="detail-val">@Model.TenNCV</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Người ký</th>
+                        <td class="detail-val">@Model.NguoiKy</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Trích yếu</th>
+                        <td class="detail-val" style="font-weight:600;">@Model.TrichYeu</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Lãnh đạo chỉ đạo</th>
+                        <td class="detail-val">@Model.TenLDXem</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày giao</th>
+                        <td class="detail-val">@Model.NgayGiao?.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Hạn xử lý</th>
+                        <td class="detail-val" style="font-weight:@(quaHan?"700":"400");color:@(quaHan?"var(--danger)":"inherit");">
+                            @Model.NgayYCHT?.ToString("dd/MM/yyyy")
+                            @if (quaHan) { <span style="font-size:12.5px;"> — Quá hạn</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày hoàn thành (phòng báo)</th>
+                        <td class="detail-val">
+                            @if (Model.NgayHT.HasValue)
+                            {
+                                bool late = Model.NgayHT > Model.NgayYCHT;
+                                <span style="color:@(late ? "var(--danger)" : "var(--success)");font-weight:600;">
+                                    @Model.NgayHT!.Value.ToString("dd/MM/yyyy HH:mm") — @(late ? "Trễ hạn" : "Đúng hạn")
+                                </span>
+                            }
+                            else { <span style="color:var(--muted);">Chưa báo hoàn thành</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày xác nhận hoàn thành (văn thư)</th>
+                        <td class="detail-val">
+                            @if (daXNHT)
+                            {
+                                <span style="color:var(--success);font-weight:600;">
+                                    <i class="bi bi-patch-check-fill me-1"></i>
+                                    @Model.NgayXNHTCV!.Value.ToString("dd/MM/yyyy HH:mm")
+                                </span>
+                                @if (!string.IsNullOrEmpty(Model.TenNVXNHT))
+                                {
+                                    <span style="color:var(--muted);font-size:12.5px;margin-left:8px;">— @Model.TenNVXNHT</span>
+                                }
+                            }
+                            else { <span style="color:var(--muted);">Chưa xác nhận</span> }
+                        </td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(Model.GhiChu))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Ghi chú</th>
+                            <td class="detail-val" style="color:var(--muted);">@Model.GhiChu</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-diagram-3 text-info"></i>
+                <span class="card-title">Phân công xử lý</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl">Đơn vị xử lý chính</th>
+                        <td class="detail-val">
+                            @if (!string.IsNullOrEmpty(Model.TenDVXL))
+                            {
+                                <span class="sbadge sbadge-primary"><i class="bi bi-building"></i>@Model.TenDVXL</span>
+                            }
+                            else { <span style="color:var(--muted);">Chưa phân công</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Đơn vị phối hợp</th>
+                        <td class="detail-val">
+                            @if (dvPhoiHop.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var dv in dvPhoiHop)
+                                    {
+                                        <span class="sbadge sbadge-info"><i class="bi bi-building"></i>@dv.TenDV</span>
+                                    }
+                                </div>
+                            }
+                            else { <span style="color:var(--muted);">Không có</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Email thông báo</th>
+                        <td class="detail-val">
+                            @if (Model.NgayGuiEmail.HasValue)
+                            {
+                                <span style="color:var(--success);font-weight:600;">
+                                    <i class="bi bi-envelope-check-fill me-1"></i>
+                                    Đã gửi lúc @Model.NgayGuiEmail.Value.ToString("dd/MM/yyyy HH:mm")
+                                </span>
+                                @if (!string.IsNullOrEmpty(Model.TenNVGuiEmail))
+                                {
+                                    <span style="color:var(--muted);font-size:12.5px;margin-left:8px;">— @Model.TenNVGuiEmail</span>
+                                }
+                                @if (coTheGuiEmail)
+                                {
+                                    <button type="button" class="btn btn-xs btn-outline-secondary ms-2" onclick="guiEmailThongBao()">
+                                        <i class="bi bi-arrow-repeat me-1"></i>Gửi lại
+                                    </button>
+                                }
+                            }
+                            else if (!Model.MaDVXL.HasValue)
+                            {
+                                <span style="color:var(--muted);">Chưa gán đơn vị xử lý — không thể gửi</span>
+                            }
+                            else if (coTheGuiEmail)
+                            {
+                                <button type="button" class="btn btn-xs btn-primary" onclick="guiEmailThongBao()">
+                                    <i class="bi bi-envelope me-1"></i>Gửi email thông báo
+                                </button>
+                                <span id="guiEmailMsg" style="font-size:12.5px;margin-left:8px;"></span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--muted);">Chưa gửi</span>
+                            }
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ TÌNH TRẠNG LIÊN THÔNG ĐƠN VỊ ══ -->
+        <div class="card mb-3" id="xulydvCard">
+            <div class="card-header">
+                <i class="bi bi-diagram-3-fill text-success"></i>
+                <span class="card-title">Tình trạng liên thông đơn vị</span>
+                @{
+                    int soHT2 = xuLyDV.Count(x => x.TrangThai == 3);
+                    int soDX2 = xuLyDV.Count(x => x.TrangThai == 1 || x.TrangThai == 2);
+                    int soC2  = xuLyDV.Count(x => x.TrangThai == 0);
+                }
+                <div class="ms-auto d-flex gap-1">
+                    @if (soHT2 > 0) { <span class="badge-status done"    style="font-size:11px;padding:3px 8px;">@soHT2 HT</span> }
+                    @if (soDX2 > 0) { <span class="badge-status pending" style="font-size:11px;padding:3px 8px;">@soDX2 Đang XL</span> }
+                    @if (soC2  > 0) { <span class="badge-status late"    style="font-size:11px;padding:3px 8px;">@soC2 Chưa TN</span> }
+                </div>
+            </div>
+            @if (!xuLyDV.Any())
+            {
+                <div class="card-body">
+                    <span style="font-size:13.5px;color:var(--muted);">Chưa phân công đơn vị xử lý.</span>
+                </div>
+            }
+            else
+            {
+                int maDVSession = (int)ViewBag.MaDV;
+                <div class="card-body p-0">
+                    <div class="tbl-wrap">
+                        <table class="app-table tbl-compact" style="table-layout:fixed;width:100%;">
+                            <colgroup>
+                                <col style="width:14%;">
+                                <col style="width:8%;">
+                                <col style="width:13%;">
+                                <col style="width:11%;">
+                                <col style="width:11%;">
+                                <col style="width:11%;">
+                                <col>
+                                <col style="width:7%;">
+                                <col style="width:14%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Đơn vị</th>
+                                    <th>Vai trò</th>
+                                    <th>Trạng thái</th>
+                                    <th>Đã xem</th>
+                                    <th>Tiếp nhận</th>
+                                    <th>Hoàn thành</th>
+                                    <th>Ghi chú</th>
+                                    <th style="text-align:center;">File</th>
+                                    <th style="text-align:center;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var row in xuLyDV)
+                            {
+                                bool canAct = maDVCoTheXuLy.Contains(row.MaDV);
+                                var dvFull = donVi.FirstOrDefault(d => d.MaDV == row.MaDV);
+                                bool laLanhDaoDV = maDVLaLanhDao.Contains(row.MaDV);
+                                bool dangMo = row.TrangThai != 3 && row.TrangThai != 4;
+                                bool canActNow = canAct && dangMo && !daXNHT;
+                                <tr class="@(canActNow ? "row-needs-action" : "")">
+                                    <td class="fw-600 fs-13 wrap-cell">
+                                        @if (canActNow) { <i class="bi bi-exclamation-circle-fill me-1" style="color:var(--warning);" title="Đơn vị này còn việc cần xử lý"></i> }
+                                        @(row.TenDVTat ?? row.TenDV)
+                                    </td>
+                                    <td>
+                                        @if (row.LoaiDV == 1) {
+                                            <span class="sbadge sbadge-primary" style="font-size:11px;">Chủ trì</span>
+                                        } else {
+                                            <span class="sbadge sbadge-info" style="font-size:11px;">Phối hợp</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge-status @row.CssBadge" style="font-size:11.5px;">
+                                            @row.TenTrangThai
+                                        </span>
+                                        @if (row.TrangThai == 4 && !string.IsNullOrEmpty(row.TenChuyenToi))
+                                        {
+                                            <div class="fs-12 text-muted mt-1"><i class="bi bi-arrow-right me-1"></i>@row.TenChuyenToi</div>
+                                        }
+                                    </td>
+                                    <td class="fs-12 num-cell">
+                                        @if (row.NgayXem.HasValue)
+                                        {
+                                            <span class="text-muted"><i class="bi bi-eye-fill me-1" style="color:var(--success);"></i>@row.NgayXem.Value.ToString("dd/MM HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:var(--warning);"><i class="bi bi-eye-slash me-1"></i>Chưa xem</span>
+                                        }
+                                    </td>
+                                    <td class="fs-12 text-muted num-cell">
+                                        @(row.NgayTiepNhan.HasValue ? row.NgayTiepNhan.Value.ToString("dd/MM HH:mm") : "—")
+                                    </td>
+                                    <td class="fs-12 text-muted num-cell">
+                                        @(row.NgayHoanThanh.HasValue ? row.NgayHoanThanh.Value.ToString("dd/MM HH:mm") : "—")
+                                    </td>
+                                    <td class="fs-12 text-muted wrap-cell">@(row.GhiChu ?? "—")</td>
+                                    <td style="text-align:center;">
+                                        @if (row.SoFile > 0)
+                                        {
+                                            <button type="button" class="btn btn-icon btn-outline-primary" title="Xem @row.SoFile file đã upload"
+                                                    onclick="moXemFileXuLy(@row.ID)">
+                                                <i class="bi bi-paperclip"></i>@row.SoFile
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <div class="d-flex flex-wrap justify-content-center gap-1">
+                                        @if (canAct && !daXNHT)
+                                        {
+                                            @if (row.TrangThai < 1)
+                                            {
+                                                <button type="button" class="btn btn-xs btn-primary me-1"
+                                                        onclick="capNhatTT('@Model.MSCV?.Trim()',@row.MaDV,1,'Xác nhận đã tiếp nhận văn bản này?')">
+                                                    <i class="bi bi-check me-1"></i>Tiếp nhận
+                                                </button>
+                                            }
+                                            @if (row.TrangThai < 2)
+                                            {
+                                                <button type="button" class="btn btn-xs btn-outline-warning me-1"
+                                                        onclick="capNhatTT('@Model.MSCV?.Trim()',@row.MaDV,2,'Đánh dấu đang xử lý?')">
+                                                    <i class="bi bi-hourglass me-1"></i>Đang xử lý
+                                                </button>
+                                            }
+                                            @if (row.TrangThai < 3)
+                                            {
+                                                <button type="button" class="btn btn-xs btn-outline-success me-1"
+                                                        onclick="capNhatTT('@Model.MSCV?.Trim()',@row.MaDV,3,'Xác nhận đơn vị này đã hoàn thành xử lý?')">
+                                                    <i class="bi bi-check-circle me-1"></i>Hoàn thành
+                                                </button>
+                                            }
+                                            <button type="button" class="btn btn-xs btn-outline-secondary"
+                                                    onclick="moUpload(@row.ID,'@Model.MSCV?.Trim()')"
+                                                    title="Tải file kết quả xử lý lên">
+                                                <i class="bi bi-upload me-1"></i>Tải file lên
+                                            </button>
+                                            @if (row.TrangThai < 3 && row.LoaiDV == 1)
+                                            {
+                                                <button type="button" class="btn btn-xs btn-outline-primary"
+                                                        onclick="moChuyenXuLy('@Model.MSCV?.Trim()', @row.MaDV, '@Html.Raw((row.TenDVTat ?? row.TenDV ?? "").Replace("'","\\'"))')"
+                                                        title="Chuyển xử lý cho đơn vị khác — chỉ đơn vị chủ trì mới chuyển được">
+                                                    <i class="bi bi-arrow-right-circle me-1"></i>Chuyển xử lý
+                                                </button>
+                                            }
+                                        }
+                                        @if (laLanhDaoDV && dangMo && !daXNHT)
+                                        {
+                                            <button type="button" class="btn btn-xs btn-success"
+                                                    onclick="moChiDaoPhanCong('@Model.MSCV?.Trim()', @row.MaDV, '@Html.Raw((row.TenDVTat ?? row.TenDV ?? "").Replace("'","\\'"))')"
+                                                    title="Chỉ đạo & phân công cho một chuyên viên cụ thể">
+                                                <i class="bi bi-person-check me-1"></i>Chỉ đạo &amp; phân công
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-warning"
+                                                    onclick="moXinYKienBGH('@Model.MSCV?.Trim()', @row.MaDV)"
+                                                    title="Xin ý kiến chỉ đạo của BGH">
+                                                <i class="bi bi-question-circle me-1"></i>Xin ý kiến BGH
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-danger"
+                                                    onclick="moTraLai('@Model.MSCV?.Trim()', @row.MaDV, '@Html.Raw((row.TenDVTat ?? row.TenDV ?? "").Replace("'","\\'"))')"
+                                                    title="Trả lại văn thư (giao nhầm đơn vị / thiếu thông tin)">
+                                                <i class="bi bi-arrow-return-left me-1"></i>Trả lại
+                                            </button>
+                                        }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Modal upload file kết quả đơn vị -->
+        <div class="modal fade" id="modalUploadXL" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700">
+                            <i class="bi bi-upload me-2 text-primary"></i>Upload file kết quả xử lý
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form asp-action="UploadFileXuLy" method="post" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <input type="hidden" id="uploadRowId" name="id" value="" />
+                            <input type="hidden" id="uploadMscv"  name="mscv" value="" />
+                            <label class="form-label">Chọn file (docx, pdf, xlsx...) <span class="text-muted fs-12">(chọn được nhiều file cùng lúc)</span></label>
+                            <input type="file" name="files" class="form-control" required multiple
+                                   accept=".docx,.doc,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" />
+                            <div class="form-text mt-1">
+                                File mới sẽ được thêm vào danh sách, không thay thế file cũ. Dùng để chia sẻ kết quả xử lý với đơn vị chủ trì.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-floppy me-1"></i>Lưu file
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal xem chi tiết file kết quả xử lý của 1 đơn vị -->
+        <div class="modal fade" id="modalXemFileXuLy" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-paperclip me-2 text-primary"></i>File kết quả xử lý — <span id="xflTenDV"></span></h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <table class="app-table">
+                            <tbody id="xflDanhSach"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal chuyển xử lý cho đơn vị khác -->
+        <div class="modal fade" id="modalChuyenXuLy" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700">
+                            <i class="bi bi-arrow-right-circle me-2 text-primary"></i>Chuyển xử lý cho đơn vị khác
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted">
+                            Từ đơn vị <strong id="cxlTenNguon"></strong> — văn bản sẽ chuyển sang trạng thái
+                            "Đã chuyển tiếp" ở đơn vị này, đơn vị đích tiếp nhận xử lý tiếp.
+                        </p>
+                        <label class="form-label">Đơn vị đích <span class="form-required">*</span></label>
+                        <select id="cxlMaDVDich" class="form-select ts-select mb-2">
+                            <option value="">-- Đang tải... --</option>
+                        </select>
+                        <label class="form-label">Ghi chú</label>
+                        <textarea id="cxlGhiChu" class="form-control" rows="2" placeholder="Lý do chuyển / hướng dẫn xử lý tiếp (không bắt buộc)"></textarea>
+                        <div id="cxlError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="xacNhanChuyenXuLy()">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Chuyển xử lý
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ LỊCH SỬ XỬ LÝ (chuyen tu cot phai vao day theo yeu cau gop nhom, bo Luong xu ly theo vai tro) ══ -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-clock-history text-warning"></i>
+                <span class="card-title">Lịch sử xử lý</span>
+                <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">@lichSu.Count bước</span>
+            </div>
+            @if (!lichSu.Any())
+            {
+                <div class="card-body">
+                    <span style="font-size:13.5px;color:var(--muted);">Chưa có lịch sử</span>
+                </div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                    <div class="timeline">
+                    @foreach (var qs in lichSu.OrderByDescending(q => q.NgayXL))
+                    {
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div style="font-size:12px;color:var(--muted);margin-bottom:2px;">
+                                    <i class="bi bi-clock me-1"></i>@qs.NgayXL.ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                                <div style="font-weight:600;font-size:13.5px;">@qs.HoTenNV</div>
+                                <div style="font-size:12.5px;color:var(--muted);">@qs.TenDV</div>
+                                @if (!string.IsNullOrEmpty(qs.NoiDungXL))
+                                {
+                                    <div style="font-size:13.5px;margin-top:6px;padding:7px 11px;background:#f8f9fb;border-left:3px solid var(--primary);border-radius:5px;">
+                                        @qs.NoiDungXL
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Modal Chỉ đạo & phân công -->
+        <div class="modal fade" id="modalChiDaoPhanCong" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-person-check me-2 text-success"></i>Chỉ đạo &amp; phân công xử lý</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted">Đơn vị <strong id="cdpcTenDV"></strong> — hệ thống sẽ tự tạo 1 Công việc liên kết, người chủ trì chịu trách nhiệm chính, người phối hợp (nếu có) cùng tham gia.</p>
+                        <label class="form-label">Chuyên viên chủ trì <span class="form-required">*</span></label>
+                        <select id="cdpcMaNV" class="form-select ts-select mb-2">
+                            <option value="">-- Đang tải... --</option>
+                        </select>
+                        <label class="form-label">Người phối hợp thêm <span class="text-muted fs-12">(không bắt buộc, chọn được nhiều người)</span></label>
+                        <select id="cdpcPhoiHop" class="form-select ts-select mb-2" multiple>
+                            <option value="">-- Đang tải... --</option>
+                        </select>
+                        <label class="form-label">Ý kiến chỉ đạo</label>
+                        <textarea id="cdpcNoiDung" class="form-control mb-2" rows="2" placeholder="Hướng dẫn/ý kiến chỉ đạo xử lý (không bắt buộc)"></textarea>
+                        <label class="form-label">Hạn xử lý</label>
+                        <input type="date" id="cdpcHanXuLy" class="form-control" />
+                        <div id="cdpcError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-success btn-sm" onclick="xacNhanChiDaoPhanCong()">
+                            <i class="bi bi-person-check me-1"></i>Chỉ đạo &amp; phân công
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Xin ý kiến BGH -->
+        <div class="modal fade" id="modalXinYKienBGH" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-question-circle me-2 text-warning"></i>Xin ý kiến chỉ đạo BGH</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Lãnh đạo BGH <span class="form-required">*</span></label>
+                        <select id="xykMaNVNhan" class="form-select ts-select mb-2">
+                            <option value="">-- Chọn lãnh đạo --</option>
+                            @foreach (var ld in lanhDao)
+                            {
+                                <option value="@ld.MaNV">@ld.HoNV @ld.TenNV</option>
+                            }
+                        </select>
+                        <label class="form-label">Nội dung xin ý kiến <span class="form-required">*</span></label>
+                        <textarea id="xykNoiDung" class="form-control" rows="3" required></textarea>
+                        <div id="xykError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="xacNhanXinYKienBGH()">
+                            <i class="bi bi-send me-1"></i>Gửi xin ý kiến
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Trả lại văn thư -->
+        <div class="modal fade" id="modalTraLai" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-arrow-return-left me-2 text-danger"></i>Trả lại văn thư</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted">Đơn vị <strong id="tlTenDV"></strong> — dùng khi văn bản giao nhầm đơn vị hoặc thiếu thông tin cần văn thư bổ sung.</p>
+                        <label class="form-label">Lý do trả lại <span class="form-required">*</span></label>
+                        <textarea id="tlLyDo" class="form-control" rows="3" required></textarea>
+                        <div id="tlError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="xacNhanTraLai()">
+                            <i class="bi bi-arrow-return-left me-1"></i>Trả lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (isBGH)
+        {
+            <!-- Modal BGH cho ý kiến chỉ đạo -->
+            <div class="modal fade" id="modalBGHTraLoi" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h6 class="modal-title fw-700"><i class="bi bi-chat-left-quote me-2 text-primary"></i>Cho ý kiến chỉ đạo</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label class="form-label">Đơn vị <span class="form-required">*</span></label>
+                            <select id="bghMaDV" class="form-select ts-select mb-2">
+                                <option value="">-- Chọn đơn vị --</option>
+                                @foreach (var row in xuLyDV.Where(r => r.TrangThai != 3 && r.TrangThai != 4))
+                                {
+                                    <option value="@row.MaDV">@(row.TenDVTat ?? row.TenDV)</option>
+                                }
+                            </select>
+                            <label class="form-label">Ý kiến chỉ đạo <span class="form-required">*</span></label>
+                            <textarea id="bghNoiDung" class="form-control" rows="3" required></textarea>
+                            <div id="bghError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="xacNhanBGHTraLoi()">
+                                <i class="bi bi-send me-1"></i>Gửi ý kiến
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (daHT)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span class="card-title">Đã hoàn thành xử lý</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2" style="color:var(--success);">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                        <div>
+                            <div class="fw-600">Văn bản đã hoàn thành xử lý</div>
+                            @if (Model.NgayHT.HasValue)
+                            {
+                                <div style="font-size:12.5px;color:var(--muted);">@Model.NgayHT.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ══ CỘT PHẢI ══ -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-paperclip text-secondary"></i>
+                <span class="card-title">File đính kèm</span>
+                @if (files.Any())
+                {
+                    <a asp-action="TaiFile" asp-route-mscv="@Model.MSCV?.Trim()" class="btn btn-sm btn-outline-primary ms-auto">
+                        <i class="bi bi-download me-1"></i>Tải tất cả
+                    </a>
+                }
+            </div>
+            @if (!files.Any())
+            {
+                <div class="card-body"><span style="font-size:13.5px;color:var(--muted);">Không có file đính kèm</span></div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                    <table class="app-table">
+                        <thead><tr><th>#</th><th>Tên file</th><th>Ngày upload</th><th style="text-align:center;">Thao tác</th></tr></thead>
+                        <tbody>
+                        @{ int fi = 1; }
+                        @foreach (var f in files)
+                        {
+                            <tr>
+                                <td class="num-cell" style="color:var(--muted);font-size:12.5px;">@(fi++)</td>
+                                <td class="wrap-filename"><i class="bi bi-file-earmark me-1 text-secondary"></i>@f.TenFile</td>
+                                <td class="num-cell" style="font-size:13px;color:var(--muted);">@f.NgayUpload.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td style="text-align:center;white-space:nowrap;">
+                                    <a asp-controller="CongVanDen" asp-action="XemFile" asp-route-id="@f.ID" asp-route-mscv="@Model.MSCV?.Trim()"
+                                       target="_blank" class="btn btn-icon btn-outline-primary" title="Xem online">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a asp-controller="CongVanDen" asp-action="TaiFileMot" asp-route-id="@f.ID" asp-route-mscv="@Model.MSCV?.Trim()"
+                                       class="btn btn-icon btn-outline-secondary" title="Tải xuống">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _filesByXuLyDV = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    xuLyDV.ToDictionary(
+        r => r.ID.ToString(),
+        r => new {
+            tenDV = r.TenDVTat ?? r.TenDV,
+            canAct = maDVCoTheXuLy.Contains(r.MaDV) && !daXNHT,
+            files = (filesByXuLyDV.TryGetValue(r.ID, out var fl) ? fl : new List<CongVan.Models.CVDenXuLyDVFile>())
+                .Select(f => new { id = f.ID, tenFile = f.TenFile, ngayUpload = f.NgayUpload.ToString("dd/MM/yyyy HH:mm"), tenNVUpload = f.TenNVUpload })
+        })));
+var _taiFileXuLyUrl = '@Url.Action("TaiFileXuLy", "CongVanDen")';
+var _xoaFileXuLyUrl = '@Url.Action("XoaFileXuLy", "CongVanDen")';
+var _mscvHienTai = '@Model.MSCV?.Trim()';
+
+function moXemFileXuLy(xuLyDVId) {
+    var info = _filesByXuLyDV[xuLyDVId];
+    if (!info) return;
+    document.getElementById('xflTenDV').textContent = info.tenDV || '';
+    var tbody = document.getElementById('xflDanhSach');
+    tbody.innerHTML = info.files.map(function (f) {
+        var xoaBtn = info.canAct
+            ? '<button type="button" class="btn btn-icon btn-outline-danger" title="Xóa file" onclick="xoaFileXuLy(' + f.id + ')"><i class="bi bi-trash3"></i></button>'
+            : '';
+        return '<tr>' +
+            '<td class="wrap-filename"><i class="bi bi-file-earmark me-1 text-secondary"></i>' + f.tenFile + '</td>' +
+            '<td style="font-size:12.5px;color:var(--muted);white-space:nowrap;">' + f.ngayUpload + (f.tenNVUpload ? ' · ' + f.tenNVUpload : '') + '</td>' +
+            '<td style="text-align:center;white-space:nowrap;">' +
+                '<a href="' + _taiFileXuLyUrl + '?fileId=' + f.id + '" class="btn btn-icon btn-outline-primary" title="Tải xuống"><i class="bi bi-download"></i></a> ' +
+                xoaBtn +
+            '</td></tr>';
+    }).join('') || '<tr><td class="text-muted fs-13 py-3">Chưa có file nào</td></tr>';
+    new bootstrap.Modal(document.getElementById('modalXemFileXuLy')).show();
+}
+
+function xoaFileXuLy(fileId) {
+    if (!confirm('Xóa file này?')) return;
+    fetch(_xoaFileXuLyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'fileId=' + fileId + '&mscv=' + encodeURIComponent(_mscvHienTai)
+    }).then(() => window.location.reload());
+}
+
+function guiEmailThongBao() {
+    var msgEl = document.getElementById('guiEmailMsg');
+    fetch('@Url.Action("GuiEmail", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent('@Model.MSCV?.Trim()')
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else if (msgEl) { msgEl.textContent = d.msg; msgEl.style.color = 'var(--danger)'; }
+        else { alert(d.msg); }
+    })
+    .catch(() => alert('Lỗi kết nối, vui lòng thử lại'));
+}
+
+function capNhatTT(mscv, maDV, trangThai, msg) {
+    if (!confirm(msg)) return;
+    fetch('@Url.Action("CapNhatTrangThaiDV","CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent(mscv) + '&maDV=' + maDV + '&trangThai=' + trangThai
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) window.location.reload();
+        else alert(d.msg || 'Lỗi cập nhật trạng thái');
+    })
+    .catch(() => alert('Lỗi kết nối, vui lòng thử lại'));
+}
+
+function moUpload(id, mscv) {
+    document.getElementById('uploadRowId').value = id;
+    document.getElementById('uploadMscv').value  = mscv;
+    new bootstrap.Modal(document.getElementById('modalUploadXL')).show();
+}
+
+var _cxlMscv = '', _cxlMaDVNguon = 0;
+function moChuyenXuLy(mscv, maDVNguon, tenNguon) {
+    _cxlMscv = mscv; _cxlMaDVNguon = maDVNguon;
+    document.getElementById('cxlTenNguon').textContent = tenNguon;
+    document.getElementById('cxlGhiChu').value = '';
+    document.getElementById('cxlError').style.display = 'none';
+    var sel = document.getElementById('cxlMaDVDich');
+    sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+    if (sel.tomselect) sel.tomselect.destroy();
+
+    fetch('@Url.Action("GetDonViDichChoPhep", "CongVanDen")?maDVNguon=' + maDVNguon)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length === 0) {
+                sel.innerHTML = '<option value="">-- Chưa có luồng nào được cấu hình --</option>';
+            } else {
+                sel.innerHTML = '<option value="">-- Chọn đơn vị đích --</option>' +
+                    data.map(d => '<option value="' + d.maDV + '">' + d.tenDV + '</option>').join('');
+            }
+            if (window.TomSelect) new TomSelect(sel);
+        });
+    new bootstrap.Modal(document.getElementById('modalChuyenXuLy')).show();
+}
+
+function xacNhanChuyenXuLy() {
+    var sel = document.getElementById('cxlMaDVDich');
+    var maDVDich = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+    var ghiChu = document.getElementById('cxlGhiChu').value.trim();
+    var err = document.getElementById('cxlError');
+    if (!maDVDich) { err.textContent = 'Vui lòng chọn đơn vị đích'; err.style.display = ''; return; }
+
+    fetch('@Url.Action("ChuyenXuLy", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent(_cxlMscv) + '&maDVNguon=' + _cxlMaDVNguon + '&maDVDich=' + maDVDich + '&ghiChu=' + encodeURIComponent(ghiChu)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi chuyển xử lý'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+
+var _cdpcMscv = '', _cdpcMaDV = 0;
+function moChiDaoPhanCong(mscv, maDV, tenDV) {
+    _cdpcMscv = mscv; _cdpcMaDV = maDV;
+    document.getElementById('cdpcTenDV').textContent = tenDV;
+    document.getElementById('cdpcNoiDung').value = '';
+    document.getElementById('cdpcHanXuLy').value = '';
+    document.getElementById('cdpcError').style.display = 'none';
+    var sel = document.getElementById('cdpcMaNV');
+    var selPH = document.getElementById('cdpcPhoiHop');
+    sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+    selPH.innerHTML = '<option value="">-- Đang tải... --</option>';
+    if (sel.tomselect) sel.tomselect.destroy();
+    if (selPH.tomselect) selPH.tomselect.destroy();
+
+    fetch('@Url.Action("GetNhanVienDonVi", "CongVanDen")?maDV=' + maDV)
+        .then(r => r.json())
+        .then(data => {
+            var options = data.length === 0
+                ? '<option value="">-- Đơn vị chưa có nhân viên --</option>'
+                : data.map(d => '<option value="' + d.maNV + '">' + d.tenNV + '</option>').join('');
+            sel.innerHTML = data.length === 0 ? options : '<option value="">-- Chọn chuyên viên chủ trì --</option>' + options;
+            selPH.innerHTML = options;
+            if (window.TomSelect) { new TomSelect(sel); new TomSelect(selPH); }
+        });
+    new bootstrap.Modal(document.getElementById('modalChiDaoPhanCong')).show();
+}
+
+function xacNhanChiDaoPhanCong() {
+    var sel = document.getElementById('cdpcMaNV');
+    var maNVPhanCong = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+    var selPH = document.getElementById('cdpcPhoiHop');
+    var phoiHopList = selPH.tomselect ? selPH.tomselect.getValue() : [];
+    var noiDung = document.getElementById('cdpcNoiDung').value.trim();
+    var hanXuLy = document.getElementById('cdpcHanXuLy').value;
+    var err = document.getElementById('cdpcError');
+    if (!maNVPhanCong) { err.textContent = 'Vui lòng chọn chuyên viên chủ trì'; err.style.display = ''; return; }
+
+    var body = 'mscv=' + encodeURIComponent(_cdpcMscv) + '&maDV=' + _cdpcMaDV + '&maNVPhanCong=' + maNVPhanCong +
+              '&noiDung=' + encodeURIComponent(noiDung) + '&hanXuLy=' + encodeURIComponent(hanXuLy);
+    (phoiHopList || []).filter(function(v){ return v; }).forEach(function(v) { body += '&nguoiPhoiHop=' + v; });
+
+    fetch('@Url.Action("ChiDaoPhanCong", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi chỉ đạo & phân công'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+
+var _xykMscv = '', _xykMaDV = 0;
+function moXinYKienBGH(mscv, maDV) {
+    _xykMscv = mscv; _xykMaDV = maDV;
+    document.getElementById('xykNoiDung').value = '';
+    document.getElementById('xykError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalXinYKienBGH')).show();
+}
+
+function xacNhanXinYKienBGH() {
+    var sel = document.getElementById('xykMaNVNhan');
+    var maNVNhan = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+    var noiDung = document.getElementById('xykNoiDung').value.trim();
+    var err = document.getElementById('xykError');
+    if (!maNVNhan) { err.textContent = 'Vui lòng chọn lãnh đạo BGH'; err.style.display = ''; return; }
+    if (!noiDung) { err.textContent = 'Vui lòng nhập nội dung xin ý kiến'; err.style.display = ''; return; }
+
+    fetch('@Url.Action("XinYKienBGH", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent(_xykMscv) + '&maDV=' + _xykMaDV + '&maNVNhan=' + maNVNhan + '&noiDung=' + encodeURIComponent(noiDung)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi gửi xin ý kiến'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+
+var _tlMscv = '', _tlMaDV = 0;
+function moTraLai(mscv, maDV, tenDV) {
+    _tlMscv = mscv; _tlMaDV = maDV;
+    document.getElementById('tlTenDV').textContent = tenDV;
+    document.getElementById('tlLyDo').value = '';
+    document.getElementById('tlError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalTraLai')).show();
+}
+
+function xacNhanTraLai() {
+    var lyDo = document.getElementById('tlLyDo').value.trim();
+    var err = document.getElementById('tlError');
+    if (!lyDo) { err.textContent = 'Vui lòng nhập lý do trả lại'; err.style.display = ''; return; }
+
+    fetch('@Url.Action("TraLaiXuLy", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent(_tlMscv) + '&maDV=' + _tlMaDV + '&lyDo=' + encodeURIComponent(lyDo)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi trả lại'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+
+function xacNhanBGHTraLoi() {
+    var sel = document.getElementById('bghMaDV');
+    var maDV = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+    var noiDung = document.getElementById('bghNoiDung').value.trim();
+    var err = document.getElementById('bghError');
+    if (!maDV) { err.textContent = 'Vui lòng chọn đơn vị'; err.style.display = ''; return; }
+    if (!noiDung) { err.textContent = 'Vui lòng nhập ý kiến chỉ đạo'; err.style.display = ''; return; }
+
+    fetch('@Url.Action("BGHTraLoiYKien", "CongVanDen")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'mscv=' + encodeURIComponent('@Model.MSCV?.Trim()') + '&maDV=' + maDV + '&noiDung=' + encodeURIComponent(noiDung)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.reload(); }
+        else { err.textContent = d.msg || 'Lỗi khi gửi ý kiến'; err.style.display = ''; }
+    })
+    .catch(() => { err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display = ''; });
+}
+</script>
+}
