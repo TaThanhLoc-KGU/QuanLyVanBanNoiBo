@@ -1,0 +1,230 @@
+@model CongVan.Models.LichCongTacFormViewModel
+@{
+    bool isNew = Model.LichCongTac.MaLich == 0;
+    ViewData["Title"] = isNew ? "Thêm lịch công tác" : "Cập nhật lịch công tác";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool CoQuyen(string ma) => CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, ma);
+    bool duocTaoToanTruong = CoQuyen("LichCongTac.ToanTruong");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-calendar-week-fill me-2 text-primary"></i>@ViewData["Title"]</h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" autocomplete="off">
+    <input asp-for="LichCongTac.MaLich" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin lịch
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="LichCongTac.TieuDe" id="inpTieuDe" class="form-control" placeholder="Nội dung công tác/họp..." />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Bắt đầu <span class="form-required">*</span></label>
+                    <input asp-for="LichCongTac.ThoiGianBatDau" id="inpBatDau" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Kết thúc</label>
+                    <input asp-for="LichCongTac.ThoiGianKetThuc" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Loại</label>
+                    <select asp-for="LichCongTac.LoaiSuKien" class="form-select ts-select">
+                        <option value="1">Họp</option>
+                        <option value="2">Công tác</option>
+                        <option value="3">Sự kiện</option>
+                        <option value="4">Khác</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Địa điểm</label>
+                    <input asp-for="LichCongTac.DiaDiem" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-6">
+                    <label class="form-label">Phòng họp <span class="text-muted fs-12">(không bắt buộc)</span></label>
+                    <select asp-for="LichCongTac.MaPhong" id="inpPhong" class="form-select ts-select">
+                        <option value="">— Không đăng ký phòng —</option>
+                        @foreach (var p in Model.DanhSachPhong)
+                        {
+                            <option value="@p.MaPhong">@p.TenPhong@(p.SucChua.HasValue ? $" ({p.SucChua} người)" : "")</option>
+                        }
+                    </select>
+                    <div id="phongStatus" class="fs-12 mt-1" style="display:none;"></div>
+                </div>
+
+                @if (duocTaoToanTruong)
+                {
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="toanTruong" value="true" id="chkToanTruong"
+                                   @(Model.LichCongTac.ToanTruong && !isNew ? "checked" : "") />
+                            <label class="form-check-label" for="chkToanTruong">
+                                Sự kiện toàn trường <span class="text-muted fs-12">(hiện cho mọi đơn vị, thay vì chỉ riêng đơn vị bạn)</span>
+                            </label>
+                        </div>
+                    </div>
+                }
+
+                <div class="col-12">
+                    <label class="form-label">Người tham gia <span class="text-muted fs-12">(không chọn = mở cho cả đơn vị/toàn trường)</span></label>
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+                         style="max-height:200px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                        @foreach (var nv in Model.DanhSachNhanVien)
+                        {
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="nguoiThamGia" value="@nv.MaNV" id="nv_@nv.MaNV"
+                                           @(Model.DanhSachNguoiThamGia.Contains(nv.MaNV) ? "checked" : "") />
+                                    <label class="form-check-label" for="nv_@nv.MaNV" style="font-size:13px;">@nv.HoNV @nv.TenNV</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Nội dung</label>
+                    <textarea asp-for="LichCongTac.NoiDung" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu lịch
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew)
+        {
+            <button type="submit" form="frmXoaLichCT" class="btn btn-outline-danger btn-lg ms-auto"
+                    onclick="return confirm('Xóa lịch này?')">
+                <i class="bi bi-trash3-fill me-1"></i>Xóa
+            </button>
+        }
+    </div>
+</form>
+
+@if (!isNew)
+{
+    <form id="frmXoaLichCT" asp-action="Xoa" method="post" hidden>
+        <input name="maLich" type="hidden" value="@Model.LichCongTac.MaLich" />
+    </form>
+}
+
+@section Scripts {
+<script>
+(function() {
+    const maLichHienTai = @Model.LichCongTac.MaLich;
+    function kiemTraPhong() {
+        const selPhong = document.getElementById('inpPhong');
+        const statusEl = document.getElementById('phongStatus');
+        const maPhong = selPhong.tomselect ? selPhong.tomselect.getValue() : selPhong.value;
+        const batDau = document.getElementById('inpBatDau').value;
+        if (!maPhong || !batDau) { statusEl.style.display = 'none'; return; }
+        const ketThuc = document.getElementById('LichCongTac_ThoiGianKetThuc')?.value || '';
+        const params = new URLSearchParams({ maPhong, batDau, loaiTruMaLich: maLichHienTai });
+        if (ketThuc) params.set('ketThuc', ketThuc);
+        fetch('@Url.Action("KiemTraPhongTrong")?' + params.toString())
+            .then(r => r.json())
+            .then(d => {
+                statusEl.style.display = '';
+                if (d.trong) {
+                    statusEl.style.color = 'var(--success)';
+                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Phòng trống trong khung giờ này';
+                } else {
+                    statusEl.style.color = 'var(--danger)';
+                    statusEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>' + d.msg;
+                }
+            })
+            .catch(() => { statusEl.style.display = 'none'; });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('inpPhong')?.addEventListener('change', kiemTraPhong);
+        document.getElementById('inpBatDau')?.addEventListener('change', kiemTraPhong);
+        document.getElementById('LichCongTac_ThoiGianKetThuc')?.addEventListener('change', kiemTraPhong);
+        kiemTraPhong();
+    });
+
+    const REQ = [
+        { id: 'inpTieuDe', label: 'Tiêu đề' },
+        { id: 'inpBatDau', label: 'Thời gian bắt đầu' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim();
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

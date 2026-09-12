@@ -1,0 +1,307 @@
+@model CongVan.Models.CongViecChiTietViewModel
+@{
+    ViewData["Title"] = "Chi tiết công việc";
+    var quyen = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool isAdminOrVT = CongVan.Models.ChucNangDangKy.CoQuyen(quyen, chucNang, "CongViec.QuanLyTatCa");
+    var maNVHienTai = (short)(ViewBag.MaNV ?? 0);
+    var cv = Model.CongViec;
+    bool coLienQuan = isAdminOrVT || cv.MaNVChuTri == maNVHienTai || cv.MaNVGiao == maNVHienTai || cv.MaNVTao == maNVHienTai
+                      || (cv.NguoiPhoiHop ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Contains(maNVHienTai.ToString());
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-list-task me-2 text-primary"></i>@cv.TieuDe</h1>
+        <p class="page-header-sub">Mã công việc: #@cv.MaCV</p>
+    </div>
+    <div class="page-header-actions">
+        @if (coLienQuan)
+        {
+            <a asp-action="Nhap" asp-route-id="@cv.MaCV" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle text-primary"></i>
+                <span class="card-title">Thông tin công việc</span>
+                <span class="ms-auto badge-status @cv.CssBadge">@(cv.QuaHan ? "Quá hạn" : cv.TenTrangThai)</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    @if (!string.IsNullOrEmpty(Model.TieuDeVanBanGoc))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Văn bản gốc</th>
+                            <td class="detail-val">
+                                <i class="bi bi-link-45deg me-1"></i>@Model.TieuDeVanBanGoc
+                                <span class="text-muted fs-12">(@cv.MSCVGoc?.Trim())</span>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <th class="detail-lbl">Mô tả</th>
+                        <td class="detail-val" style="white-space:pre-line;">@(string.IsNullOrEmpty(cv.MoTa) ? "—" : cv.MoTa)</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Người giao việc</th>
+                        <td class="detail-val">@cv.TenNVGiao</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Người chủ trì</th>
+                        <td class="detail-val" style="font-weight:600;">@cv.TenNVChuTri <span class="text-muted fs-12">(@cv.TenDV)</span></td>
+                    </tr>
+                    @if (Model.TenNVPhoiHop.Any())
+                    {
+                        <tr>
+                            <th class="detail-lbl">Người phối hợp</th>
+                            <td class="detail-val">@string.Join(", ", Model.TenNVPhoiHop)</td>
+                        </tr>
+                    }
+                    <tr>
+                        <th class="detail-lbl">Ngày giao</th>
+                        <td class="detail-val">@cv.NgayGiao.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Hạn xử lý</th>
+                        <td class="detail-val">@(cv.HanXuLy?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Mức độ ưu tiên</th>
+                        <td class="detail-val">@cv.TenMucDo</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(cv.GhiChu))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Ghi chú</th>
+                            <td class="detail-val" style="color:var(--muted);">@cv.GhiChu</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+            @if (coLienQuan && cv.TrangThai < 2)
+            {
+                <div class="card-body border-top d-flex gap-2 flex-wrap">
+                    @if (cv.TrangThai < 1)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="capNhatTrangThai(1,'Bắt đầu thực hiện công việc này?')">
+                            <i class="bi bi-play-circle me-1"></i>Bắt đầu thực hiện
+                        </button>
+                    }
+                    <button type="button" class="btn btn-sm btn-success" onclick="capNhatTrangThai(2,'Đánh dấu công việc đã hoàn thành?')">
+                        <i class="bi bi-check-circle me-1"></i>Đánh dấu hoàn thành
+                    </button>
+                    @if (isAdminOrVT || cv.MaNVChuTri == maNVHienTai)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-auto" data-bs-toggle="modal" data-bs-target="#modalXinTraLai">
+                            <i class="bi bi-arrow-return-left me-1"></i>Xin trả lại/chuyển người khác
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-paperclip text-secondary"></i>
+                <span class="card-title">Hồ sơ đính kèm</span>
+            </div>
+            <div class="card-body">
+                @if (!Model.DanhSachFile.Any())
+                {
+                    <span class="text-muted fs-13">Chưa có file đính kèm.</span>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var f in Model.DanhSachFile)
+                        {
+                            <li class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-file-earmark-text text-muted"></i>
+                                <span class="flex-grow-1 fs-13" style="overflow-wrap:anywhere;">@f.TenFile</span>
+                                <a href="/view/@f.DuongDan" target="_blank" class="btn btn-icon btn-outline-primary" title="Xem online">
+                                    <i class="bi bi-eye" style="font-size:12px;"></i>
+                                </a>
+                                <a href="/files/@f.DuongDan" class="btn btn-icon btn-outline-secondary" title="Tải file">
+                                    <i class="bi bi-download" style="font-size:12px;"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history text-warning"></i>
+                <span class="card-title">Nhật ký xử lý</span>
+                <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">@Model.NhatKy.Count bước</span>
+            </div>
+            @if (coLienQuan && cv.TrangThai < 2)
+            {
+                <div class="card-body border-bottom">
+                    <form asp-action="ThemNhatKy" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="maCV" value="@cv.MaCV" />
+                        <textarea name="noiDung" class="form-control form-control-sm mb-2" rows="2" placeholder="Ghi nhận tiến độ xử lý..." required></textarea>
+                        <input type="file" name="file" class="form-control form-control-sm mb-2" />
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-plus-lg me-1"></i>Ghi nhật ký
+                        </button>
+                    </form>
+                </div>
+            }
+            @if (!Model.NhatKy.Any())
+            {
+                <div class="card-body">
+                    <span style="font-size:13.5px;color:var(--muted);">Chưa có nhật ký</span>
+                </div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                    <div class="timeline">
+                    @foreach (var nk in Model.NhatKy)
+                    {
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div style="font-size:12px;color:var(--muted);margin-bottom:2px;">
+                                    <i class="bi bi-clock me-1"></i>@nk.NgayGhi.ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                                <div style="font-weight:600;font-size:13.5px;">@nk.TenNV</div>
+                                <div style="font-size:13.5px;margin-top:6px;padding:7px 11px;background:#f8f9fb;border-left:3px solid var(--primary);border-radius:5px;">
+                                    @nk.NoiDung
+                                </div>
+                                @if (!string.IsNullOrEmpty(nk.FileDinhKem))
+                                {
+                                    <a href="/view/@nk.FileDinhKem" target="_blank" class="fs-12 d-inline-block mt-1">
+                                        <i class="bi bi-paperclip me-1"></i>Xem file đính kèm
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="bi bi-chat-left-text text-info"></i>
+        <span class="card-title">Trao đổi / Bình luận</span>
+        <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">@Model.BinhLuan.Count bình luận</span>
+    </div>
+    <div class="card-body">
+        @if (!Model.BinhLuan.Any())
+        {
+            <span class="text-muted fs-13">Chưa có bình luận nào — trao đổi trực tiếp về công việc này tại đây.</span>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3 mb-3">
+                @foreach (var bl in Model.BinhLuan)
+                {
+                    <div class="d-flex gap-2" style="align-items:flex-start;">
+                        <div class="user-avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0;">
+                            @(bl.TenNV?.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?[..1].ToUpper() ?? "?")
+                        </div>
+                        <div class="flex-grow-1" style="min-width:0;">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-weight:600;font-size:13.5px;">@bl.TenNV</span>
+                                <span class="fs-12 text-muted">@bl.NgayBinhLuan.ToString("dd/MM/yyyy HH:mm")</span>
+                                @if (isAdminOrVT || bl.MaNV == maNVHienTai)
+                                {
+                                    <form asp-action="XoaBinhLuan" method="post" class="d-inline ms-auto" onsubmit="return confirm('Xóa bình luận này?')">
+                                        <input type="hidden" name="id" value="@bl.ID" />
+                                        <input type="hidden" name="maCV" value="@cv.MaCV" />
+                                        <button type="submit" class="btn btn-icon btn-outline-danger" style="width:22px;height:22px;" title="Xóa">
+                                            <i class="bi bi-x-lg" style="font-size:10px;"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                            <div style="font-size:13.5px;margin-top:4px;padding:7px 11px;background:#f8f9fb;border-radius:8px;white-space:pre-line;overflow-wrap:anywhere;">
+                                @bl.NoiDung
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        @if (coLienQuan)
+        {
+            <form asp-action="ThemBinhLuan" method="post" class="d-flex gap-2 border-top pt-3">
+                <input type="hidden" name="maCV" value="@cv.MaCV" />
+                <textarea name="noiDung" class="form-control form-control-sm" rows="2" placeholder="Viết bình luận..." required></textarea>
+                <button type="submit" class="btn btn-sm btn-primary align-self-end">
+                    <i class="bi bi-send me-1"></i>Gửi
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (isAdminOrVT || cv.MaNVChuTri == maNVHienTai)
+{
+    <div class="modal fade" id="modalXinTraLai" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="XinTraLai" method="post">
+                    <input type="hidden" name="maCV" value="@cv.MaCV" />
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-arrow-return-left me-2 text-danger"></i>Xin trả lại/chuyển người khác</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted">
+                            Dùng khi bạn không thể thực hiện công việc này — người giao việc / lãnh đạo đơn vị sẽ thấy
+                            yêu cầu này @(!string.IsNullOrEmpty(cv.MSCVGoc) ? "trong luồng xử lý của văn bản gốc " : "")và phân công lại.
+                        </p>
+                        <label class="form-label">Lý do <span class="form-required">*</span></label>
+                        <textarea name="lyDo" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="bi bi-send me-1"></i>Gửi yêu cầu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+function capNhatTrangThai(trangThai, msg) {
+    if (!confirm(msg)) return;
+    fetch('@Url.Action("CapNhatTrangThai", "CongViec")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'maCV=' + @cv.MaCV + '&trangThai=' + trangThai
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) window.location.reload();
+        else alert(d.msg || 'Lỗi cập nhật trạng thái');
+    })
+    .catch(() => alert('Lỗi kết nối, vui lòng thử lại'));
+}
+</script>
+}

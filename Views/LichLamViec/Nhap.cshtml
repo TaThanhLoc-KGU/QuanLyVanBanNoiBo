@@ -1,0 +1,220 @@
+@model CongVan.Models.LichLamViecFormViewModel
+@{
+    bool isNew = Model.LichLamViec.MaLich == 0;
+    ViewData["Title"] = isNew ? "Thêm lịch làm việc" : "Cập nhật lịch làm việc";
+    bool isAdmin = ViewBag.IsAdmin as bool? ?? false;
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-calendar2-check-fill me-2 text-primary"></i>@ViewData["Title"]</h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" autocomplete="off">
+    <input asp-for="LichLamViec.MaLich" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin lịch làm việc
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Loại lịch <span class="form-required">*</span></label>
+                    <select asp-for="LichLamViec.LoaiLich" id="selLoaiLich" class="form-select" onchange="doiLoaiLich()">
+                        @if (ViewBag.CoTheTaoLichLanhDao is bool ctld && ctld)
+                        {
+                            <option value="1">Lịch làm việc của lãnh đạo</option>
+                        }
+                        <option value="2">Lịch công tác (sự kiện đơn vị / toàn trường)</option>
+                    </select>
+                    <div class="form-text">Lịch công tác đã được gộp vào đây — không còn menu riêng.</div>
+                </div>
+                <div class="col-sm-6 col-lg-4 khoi-congtac">
+                    <label class="form-label">Phạm vi</label>
+                    <select asp-for="LichLamViec.MaDV" class="form-select ts-select">
+                        <option value="">Toàn trường</option>
+                        @foreach (var dv in Model.DanhSachDonVi)
+                        { <option value="@dv.MaDV">@dv.TenDV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-4 khoi-congtac">
+                    <label class="form-label">Phòng họp <span class="text-muted fs-12">(nếu có)</span></label>
+                    <select asp-for="LichLamViec.MaPhong" class="form-select ts-select">
+                        <option value="">-- Không đăng ký phòng --</option>
+                        @foreach (var p in Model.DanhSachPhong)
+                        { <option value="@p.MaPhong">@p.TenPhong</option> }
+                    </select>
+                </div>
+                @if (isAdmin)
+                {
+                    <div class="col-12 khoi-lanhdao">
+                        <label class="form-label">Lãnh đạo <span class="form-required">*</span></label>
+                        <select asp-for="LichLamViec.MaNVLanhDao" class="form-select ts-select">
+                            @foreach (var nv in Model.DanhSachLanhDao)
+                            {
+                                <option value="@nv.MaNV">@nv.HoNV @nv.TenNV@(string.IsNullOrEmpty(nv.TenDV) ? "" : $" — {nv.TenDV}")</option>
+                            }
+                        </select>
+                        <div class="form-text">Chỉ Admin mới tạo lịch thay cho người khác được — người thường chỉ tạo lịch của chính mình.</div>
+                    </div>
+                }
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="LichLamViec.TieuDe" id="inpTieuDe" class="form-control" placeholder="Họp giao ban, đi công tác..." />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Bắt đầu <span class="form-required">*</span></label>
+                    <input asp-for="LichLamViec.ThoiGianBatDau" id="inpBatDau" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Kết thúc</label>
+                    <input asp-for="LichLamViec.ThoiGianKetThuc" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Loại</label>
+                    <select asp-for="LichLamViec.LoaiSuKien" class="form-select ts-select">
+                        <option value="1">Họp</option>
+                        <option value="2">Công tác</option>
+                        <option value="3">Sự kiện</option>
+                        <option value="4">Khác</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Địa điểm</label>
+                    <input asp-for="LichLamViec.DiaDiem" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Người kèm theo <span class="text-muted fs-12">(không hiện trên lịch chung — chỉ hiện khi xem chi tiết ngày)</span></label>
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+                         style="max-height:200px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                        @foreach (var nv in Model.DanhSachNhanVien)
+                        {
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="nguoiKemTheo" value="@nv.MaNV" id="nv_@nv.MaNV"
+                                           @(Model.DanhSachNguoiKemTheo.Contains(nv.MaNV) ? "checked" : "") />
+                                    <label class="form-check-label" for="nv_@nv.MaNV" style="font-size:13px;">@nv.HoNV @nv.TenNV</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Nội dung</label>
+                    <textarea asp-for="LichLamViec.NoiDung" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu lịch
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew)
+        {
+            <button type="submit" form="frmXoaLich" class="btn btn-outline-danger btn-lg ms-auto"
+                    onclick="return confirm('Xóa lịch này?')">
+                <i class="bi bi-trash3-fill me-1"></i>Xóa
+            </button>
+        }
+    </div>
+</form>
+
+@if (!isNew)
+{
+    <form id="frmXoaLich" asp-action="Xoa" method="post" hidden>
+        <input name="maLich" type="hidden" value="@Model.LichLamViec.MaLich" />
+    </form>
+}
+
+@section Scripts {
+<script>
+/* Hiện/ẩn các ô riêng của từng loại lịch */
+function doiLoaiLich() {
+    var v = document.getElementById('selLoaiLich').value;
+    document.querySelectorAll('.khoi-congtac').forEach(function (e) { e.style.display = (v === '2') ? '' : 'none'; });
+    document.querySelectorAll('.khoi-lanhdao').forEach(function (e) { e.style.display = (v === '2') ? 'none' : ''; });
+}
+document.addEventListener('DOMContentLoaded', doiLoaiLich);
+
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe', label: 'Tiêu đề' },
+        { id: 'inpBatDau', label: 'Thời gian bắt đầu' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim();
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

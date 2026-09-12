@@ -1,0 +1,171 @@
+@model CongVan.Models.HoSoCongViecFormViewModel
+@{
+    bool isNew = Model.HoSoCongViec.MaHoSo == 0;
+    ViewData["Title"] = isNew ? "Mở hồ sơ công việc mới" : "Cập nhật hồ sơ công việc";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool isAdminOrVT = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "HoSoCongViec.QuanLyTatCa");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-folder2-open me-2 text-primary"></i>@ViewData["Title"]</h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" autocomplete="off">
+    <input asp-for="HoSoCongViec.MaHoSo" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin hồ sơ
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề hồ sơ <span class="form-required">*</span></label>
+                    <input asp-for="HoSoCongViec.TieuDe" id="inpTieuDe" class="form-control" placeholder="Tên vụ việc/hồ sơ..." />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Mô tả</label>
+                    <textarea asp-for="HoSoCongViec.MoTa" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Người phụ trách <span class="form-required">*</span></label>
+                    <select asp-for="HoSoCongViec.MaNVPhuTrach" id="selPhuTrach" class="form-select ts-select">
+                        <option value="0">-- Chọn --</option>
+                        @foreach (var nv in Model.DanhSachNhanVien)
+                        { <option value="@nv.MaNV" data-madv="@nv.MaDV">@nv.HoNV @nv.TenNV — @nv.TenDV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Đơn vị phụ trách <span class="form-required">*</span></label>
+                    <select asp-for="HoSoCongViec.MaDVPhuTrach" id="selDVPhuTrach" class="form-select ts-select">
+                        <option value="0">-- Chọn --</option>
+                        @foreach (var dv in Model.DanhSachNhanVien.Select(n => new { n.MaDV, n.TenDV }).Distinct())
+                        { <option value="@dv.MaDV">@dv.TenDV</option> }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Ghi chú</label>
+                    <textarea asp-for="HoSoCongViec.GhiChu" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu hồ sơ
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew && isAdminOrVT)
+        {
+            <form asp-action="Xoa" method="post" class="d-inline ms-auto" onsubmit="return confirm('Xóa hồ sơ này? Các liên kết công việc/văn bản sẽ bị gỡ (không xóa dữ liệu gốc).')">
+                <input name="maHoSo" type="hidden" value="@Model.HoSoCongViec.MaHoSo" />
+                <button type="submit" class="btn btn-outline-danger btn-lg">
+                    <i class="bi bi-trash3-fill me-1"></i>Xóa
+                </button>
+            </form>
+        }
+    </div>
+</form>
+
+@section Scripts {
+<script>
+(function() {
+    function dongBoDonVi() {
+        var selNV = document.getElementById('selPhuTrach');
+        var selDV = document.getElementById('selDVPhuTrach');
+        if (!selNV || !selDV) return;
+        var opt = selNV.options[selNV.selectedIndex];
+        var maDV = opt ? opt.getAttribute('data-madv') : null;
+        if (!maDV) return;
+        if (selDV.tomselect) selDV.tomselect.setValue(maDV);
+        else selDV.value = maDV;
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        var selNV = document.getElementById('selPhuTrach');
+        if (!selNV) return;
+        selNV.addEventListener('change', dongBoDonVi);
+        if (selNV.tomselect) selNV.tomselect.on('change', dongBoDonVi);
+    });
+})();
+
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe',     label: 'Tiêu đề' },
+        { id: 'selPhuTrach',   label: 'Người phụ trách' },
+        { id: 'selDVPhuTrach', label: 'Đơn vị phụ trách' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim() || el.value === '0';
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+            if (el.tomselect) el.tomselect.on('change', () => { el._dirty = true; validate(false); });
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

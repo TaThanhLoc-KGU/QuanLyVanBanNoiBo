@@ -1,0 +1,121 @@
+@model CongVan.Models.LichNoiBoDonViFilterViewModel
+@{
+    ViewData["Title"] = "Lịch nội bộ đơn vị";
+    var thisMonth = new DateTime(Model.Nam, Model.Thang, 1);
+    var prevMonth = thisMonth.AddMonths(-1);
+    var nextMonth = thisMonth.AddMonths(1);
+    var today = DateTime.Today;
+    bool xemDonViKhac = ViewBag.XemDonViKhac as bool? ?? false;
+    var danhSachDonVi = ViewBag.DanhSachDonVi as List<CongVan.Models.DonVi> ?? new();
+
+    var byDay = Model.DanhSach.GroupBy(l => l.ThoiGianBatDau.Date).ToDictionary(g => g.Key, g => g.OrderBy(l => l.ThoiGianBatDau).ToList());
+    string[] thu = { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" };
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-calendar2-week-fill me-2 text-primary"></i>Lịch nội bộ đơn vị</h1>
+        <p class="page-header-sub">Lịch làm việc chung của cả đơn vị — mọi người trong đơn vị xem và tạo được, không cần qua văn thư trung tâm.</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Nhap" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Thêm lịch mới
+        </a>
+    </div>
+</div>
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="cal-nav mb-0">
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-nam="@prevMonth.Year" asp-route-thang="@prevMonth.Month" asp-route-maDV="@Model.MaDV">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <span class="cal-nav-title">@thisMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("vi-VN"))</span>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-nam="@nextMonth.Year" asp-route-thang="@nextMonth.Month" asp-route-maDV="@Model.MaDV">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-nam="@today.Year" asp-route-thang="@today.Month">Tháng này</a>
+    </div>
+    @if (xemDonViKhac)
+    {
+        <form method="get" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="nam" value="@Model.Nam" />
+            <input type="hidden" name="thang" value="@Model.Thang" />
+            <select name="maDV" class="form-select form-select-sm" style="width:220px;" onchange="this.form.submit()">
+                @foreach (var dv in danhSachDonVi)
+                {
+                    <option value="@dv.MaDV" selected="@(Model.MaDV == dv.MaDV)">@dv.TenDV</option>
+                }
+            </select>
+        </form>
+    }
+</div>
+
+<div class="cal-grid">
+    @foreach (var t in thu)
+    {
+        <div class="cal-weekday">@t</div>
+    }
+    @{ var cursor = Model.GridStart; }
+    @while (cursor <= Model.GridEnd)
+    {
+        var events = byDay.TryGetValue(cursor, out var list) ? list : new List<CongVan.Models.LichNoiBoDonVi>();
+        bool otherMonth = cursor.Month != Model.Thang;
+        bool isToday = cursor == today;
+        var dayCursor = cursor;
+        <div class="cal-day @(otherMonth ? "other-month" : "") @(isToday ? "today" : "")">
+            <div class="cal-day-num">@dayCursor.Day</div>
+            @foreach (var ev in events.Take(3))
+            {
+                <div class="cal-event" onclick="window.location.href='@Url.Action("Nhap", new { id = ev.MaLich })'" title="@ev.TieuDe">
+                    @ev.ThoiGianBatDau.ToString("HH:mm") @ev.TieuDe
+                </div>
+            }
+            @if (events.Count > 3)
+            {
+                <div class="cal-event-more" onclick="moXemNgay('@dayCursor.ToString("yyyy-MM-dd")')">+@(events.Count - 3) khác</div>
+            }
+        </div>
+        cursor = cursor.AddDays(1);
+    }
+</div>
+
+<div class="modal fade" id="modalXemNgay" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-700"><i class="bi bi-calendar-day me-2 text-primary"></i>Lịch ngày <span id="xnTieuDe"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <ul class="list-unstyled mb-0" id="xnDanhSach"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var _eventsByDay = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    byDay.ToDictionary(
+        kv => kv.Key.ToString("yyyy-MM-dd"),
+        kv => kv.Value.Select(ev => new {
+            gio = ev.ThoiGianBatDau.ToString("HH:mm"),
+            tieuDe = ev.TieuDe,
+            url = Url.Action("Nhap", new { id = ev.MaLich })
+        })
+    )));
+
+function moXemNgay(ngay) {
+    var events = _eventsByDay[ngay] || [];
+    var d = new Date(ngay + 'T00:00:00');
+    document.getElementById('xnTieuDe').textContent = d.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    var ul = document.getElementById('xnDanhSach');
+    ul.innerHTML = events.map(function (ev) {
+        return '<li class="d-flex align-items-center gap-3 px-3 py-2" style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="window.location.href=\'' + ev.url + '\'">' +
+            '<div style="width:56px;font-weight:600;font-size:13px;color:var(--primary);flex-shrink:0;">' + ev.gio + '</div>' +
+            '<div style="font-weight:600;font-size:13.5px;">' + ev.tieuDe + '</div></li>';
+    }).join('') || '<li class="px-3 py-3 text-muted fs-13">Không có sự kiện</li>';
+    new bootstrap.Modal(document.getElementById('modalXemNgay')).show();
+}
+</script>
+}

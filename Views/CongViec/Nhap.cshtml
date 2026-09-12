@@ -1,0 +1,363 @@
+@model CongVan.Models.CongViecFormViewModel
+@{
+    bool isNew = Model.CongViec.MaCV == 0;
+    ViewData["Title"] = isNew ? "Giao việc mới" : "Cập nhật công việc";
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool isAdminOrVT = CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, "CongViec.QuanLyTatCa");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-list-task me-2 text-primary"></i>@ViewData["Title"]</h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
+    <input asp-for="CongViec.MaCV" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin công việc
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="CongViec.TieuDe" id="inpTieuDe" class="form-control" placeholder="Tên công việc cần thực hiện..." />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Mô tả</label>
+                    <textarea asp-for="CongViec.MoTa" class="form-control" rows="3" placeholder="Chi tiết công việc..."></textarea>
+                </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Người chủ trì <span class="form-required">*</span></label>
+                    <select asp-for="CongViec.MaNVChuTri" id="selChuTri" class="form-select ts-select">
+                        <option value="0">-- Chọn --</option>
+                        @foreach (var nv in Model.DanhSachNhanVien)
+                        { <option value="@nv.MaNV" data-madv="@nv.MaDV">@nv.HoNV @nv.TenNV — @nv.TenDV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Đơn vị chủ trì <span class="form-required">*</span></label>
+                    <select asp-for="CongViec.MaDV" id="selDVChuTri" class="form-select ts-select">
+                        <option value="0">-- Chọn --</option>
+                        @foreach (var dv in Model.DanhSachNhanVien.Select(n => new { n.MaDV, n.TenDV }).Distinct())
+                        { <option value="@dv.MaDV">@dv.TenDV</option> }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Mức độ ưu tiên</label>
+                    <select asp-for="CongViec.MucDoUuTien" class="form-select ts-select">
+                        <option value="1">Thường</option>
+                        <option value="2">Cao</option>
+                        <option value="3">Khẩn</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Hạn xử lý</label>
+                    <input asp-for="CongViec.HanXuLy" type="date" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
+                        <label class="form-label mb-0">
+                            Người phối hợp — <span id="phDem" class="text-primary fw-700">0</span> người đã chọn
+                        </label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <select id="phLocDV" class="form-select form-select-sm" style="width:auto;min-width:210px;" onchange="phLoc()">
+                                <option value="">Tất cả đơn vị</option>
+                                <option value="__CUNG__">Chỉ trong đơn vị chủ trì</option>
+                                <option value="__NGOAI__">Chỉ ngoài đơn vị chủ trì</option>
+                                @foreach (var dv in Model.DanhSachNhanVien.Where(n => n.MaDV > 0)
+                                            .Select(n => new { n.MaDV, n.TenDV }).Distinct().OrderBy(d => d.TenDV))
+                                {
+                                    <option value="@dv.MaDV">@dv.TenDV</option>
+                                }
+                            </select>
+                            <input id="phTim" class="form-control form-control-sm" style="width:190px;" placeholder="Tìm tên..." oninput="phLoc()" />
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="phChonHienThi(true)">Chọn hết (đang hiện)</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="phChonHienThi(false)">Bỏ chọn</button>
+                        </div>
+                    </div>
+                    <div id="phGrid"
+                         style="max-height:320px;overflow-y:auto;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);">
+                        @foreach (var grp in Model.DanhSachNhanVien.GroupBy(n => new { n.MaDV, n.TenDV }).OrderBy(g => g.Key.TenDV))
+                        {
+                            <div class="ph-nhom" data-madv="@grp.Key.MaDV">
+                                <div class="d-flex align-items-center gap-2 mt-2 mb-1">
+                                    <strong class="fs-12" style="color:var(--primary);">@(grp.Key.TenDV ?? "(chưa gán đơn vị)")</strong>
+                                    <span class="ph-badge fs-12"></span>
+                                    <a href="javascript:void(0)" class="fs-12" onclick="phChonNhom(this,true)">chọn cả nhóm</a>
+                                </div>
+                                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-1">
+                                    @foreach (var nv in grp)
+                                    {
+                                        <div class="col ph-item" data-ten="@((nv.HoNV + " " + nv.TenNV).ToLower())" data-madv="@nv.MaDV">
+                                            <label class="form-check d-flex align-items-center gap-2 px-2 py-1 mb-0" style="cursor:pointer;" for="nv_@nv.MaNV">
+                                                <input class="form-check-input ph-nv mt-0" type="checkbox" name="nvPhoiHop" value="@nv.MaNV" id="nv_@nv.MaNV"
+                                                       data-madv="@nv.MaDV" onchange="phDem()"
+                                                       @(Model.DanhSachNVPhoiHop.Contains(nv.MaNV) ? "checked" : "") />
+                                                <span style="font-size:13px;line-height:1.35;">@nv.HoNV @nv.TenNV</span>
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-text">Chọn đơn vị phối hợp ở ô lọc bên trên, rồi tick từng người. Nhóm nào thuộc đơn vị chủ trì sẽ có nhãn <span class="sbadge sbadge-gray">cùng đơn vị</span>.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Loại văn bản gốc (nếu có)</label>
+                    <select asp-for="CongViec.LoaiNguonGoc" id="selLoaiGoc" class="form-select">
+                        <option value="">-- Không gắn văn bản --</option>
+                        <option value="1">Văn bản đến</option>
+                        <option value="2">Văn bản đi</option>
+                        <option value="3">Văn bản điều hành</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Văn bản gốc <span class="text-muted fs-12">(gõ số văn bản hoặc trích yếu để tìm)</span></label>
+                    <input asp-for="CongViec.MSCVGoc" id="inpMSCVGoc" type="hidden" />
+                    <div style="position:relative;">
+                        <input id="vbTim" class="form-control" autocomplete="off"
+                               placeholder="Chọn loại văn bản trước, rồi gõ để tìm..." oninput="vbTimKiem()" onfocus="vbTimKiem()" />
+                        <div id="vbKetQua" class="card" style="display:none;position:absolute;z-index:20;left:0;right:0;top:100%;max-height:260px;overflow-y:auto;box-shadow:var(--shadow-lg);"></div>
+                    </div>
+                    <div id="vbDaChon" class="mt-2 fs-13" style="display:none;">
+                        <span class="sbadge sbadge-success"><i class="bi bi-link-45deg"></i><span id="vbDaChonText"></span></span>
+                        <a href="javascript:void(0)" class="fs-12 ms-2" onclick="vbBoChon()">bỏ gắn</a>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Ghi chú</label>
+                    <textarea asp-for="CongViec.GhiChu" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">File đính kèm <span class="text-muted fs-12">(không bắt buộc)</span></label>
+                    <input type="file" name="fileDinhKem" class="form-control" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu công việc
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew && isAdminOrVT)
+        {
+            <form asp-action="Xoa" method="post" class="d-inline ms-auto" onsubmit="return confirm('Xóa công việc này?')">
+                <input name="maCV" type="hidden" value="@Model.CongViec.MaCV" />
+                <button type="submit" class="btn btn-outline-danger btn-lg">
+                    <i class="bi bi-trash3-fill me-1"></i>Xóa
+                </button>
+            </form>
+        }
+    </div>
+</form>
+
+@section Scripts {
+<script>
+/* ═══ Người phối hợp: lọc theo đơn vị / cùng–ngoài đơn vị chủ trì, tìm tên, chọn nhóm ═══ */
+function dvChuTriHienTai() {
+    var s = document.getElementById('selDVChuTri');
+    return s ? (s.tomselect ? s.tomselect.getValue() : s.value) : '';
+}
+function phLoc() {
+    var loc = document.getElementById('phLocDV').value;
+    var tu  = (document.getElementById('phTim').value || '').trim().toLowerCase();
+    var dvCT = String(dvChuTriHienTai() || '');
+    document.querySelectorAll('#phGrid .ph-item').forEach(function (it) {
+        var madv = String(it.dataset.madv || '');
+        var hop = true;
+        if (loc === '__CUNG__')       hop = (madv === dvCT && dvCT !== '' && dvCT !== '0');
+        else if (loc === '__NGOAI__') hop = (madv !== dvCT);
+        else if (loc)                 hop = (madv === loc);
+        if (hop && tu) hop = it.dataset.ten.indexOf(tu) !== -1;
+        it.style.display = hop ? '' : 'none';
+    });
+    // ẩn nhóm rỗng + gắn nhãn cùng/ngoài đơn vị
+    document.querySelectorAll('#phGrid .ph-nhom').forEach(function (g) {
+        var con = [...g.querySelectorAll('.ph-item')].some(function (i) { return i.style.display !== 'none'; });
+        g.style.display = con ? '' : 'none';
+        var b = g.querySelector('.ph-badge');
+        if (b) {
+            var la = String(g.dataset.madv || '') === dvCT && dvCT !== '' && dvCT !== '0';
+            b.className = 'ph-badge fs-12 sbadge ' + (la ? 'sbadge-gray' : 'sbadge-info');
+            b.textContent = la ? 'cùng đơn vị' : 'ngoài đơn vị';
+        }
+    });
+}
+function phChonHienThi(v) {
+    document.querySelectorAll('#phGrid .ph-item').forEach(function (it) {
+        if (it.style.display === 'none') return;
+        var cb = it.querySelector('.ph-nv'); if (cb) cb.checked = v;
+    });
+    phDem();
+}
+function phChonNhom(a, v) {
+    a.closest('.ph-nhom').querySelectorAll('.ph-item').forEach(function (it) {
+        if (it.style.display === 'none') return;
+        var cb = it.querySelector('.ph-nv'); if (cb) cb.checked = v;
+    });
+    phDem();
+}
+function phDem() {
+    var n = document.querySelectorAll('.ph-nv:checked').length;
+    var el = document.getElementById('phDem'); if (el) el.textContent = n;
+}
+
+/* ═══ Tìm & gắn văn bản gốc ═══ */
+var _vbTimer = null;
+function vbTimKiem() {
+    clearTimeout(_vbTimer);
+    _vbTimer = setTimeout(function () {
+        var loai = document.getElementById('selLoaiGoc').value;
+        var q = document.getElementById('vbTim').value.trim();
+        var box = document.getElementById('vbKetQua');
+        if (!loai) { box.innerHTML = '<div class="p-2 fs-13 text-muted">Chọn "Loại văn bản gốc" trước.</div>'; box.style.display=''; return; }
+        if (q.length < 2) { box.style.display = 'none'; return; }
+        fetch('@Url.Action("TimVanBan", "CongViec")?loai=' + loai + '&q=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (ds) {
+                if (!ds.length) { box.innerHTML = '<div class="p-2 fs-13 text-muted">Không tìm thấy văn bản phù hợp.</div>'; box.style.display=''; return; }
+                box.innerHTML = ds.map(function (v) {
+                    return '<a href="javascript:void(0)" class="d-block px-2 py-2" style="border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);"'
+                        + ' onclick="vbChon(\'' + v.mscv + '\',\'' + (v.soVanBan||'').replace(/'/g,"\\'") + '\',\'' + (v.trichYeu||'').replace(/'/g,"\\'").replace(/"/g,'&quot;') + '\')">'
+                        + '<div style="font-weight:700;font-size:12.5px;color:var(--primary);">' + (v.soVanBan||v.mscv) + ' <span class="text-muted fw-400">— ' + v.ngay + '</span></div>'
+                        + '<div style="font-size:12.5px;line-height:1.4;">' + (v.trichYeu||'') + '</div></a>';
+                }).join('');
+                box.style.display = '';
+            });
+    }, 250);
+}
+function vbChon(mscv, so, trichYeu) {
+    document.getElementById('inpMSCVGoc').value = mscv;
+    document.getElementById('vbKetQua').style.display = 'none';
+    document.getElementById('vbTim').value = '';
+    document.getElementById('vbDaChonText').textContent = (so || mscv) + ' — ' + (trichYeu || '');
+    document.getElementById('vbDaChon').style.display = '';
+}
+function vbBoChon() {
+    document.getElementById('inpMSCVGoc').value = '';
+    document.getElementById('vbDaChon').style.display = 'none';
+}
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('#vbKetQua') && !e.target.closest('#vbTim'))
+        document.getElementById('vbKetQua').style.display = 'none';
+});
+document.addEventListener('DOMContentLoaded', function () {
+    phDem(); phLoc();
+    var selDV = document.getElementById('selDVChuTri');
+    if (selDV) {
+        selDV.addEventListener('change', phLoc);
+        if (selDV.tomselect) selDV.tomselect.on('change', phLoc);
+    }
+    document.getElementById('selLoaiGoc')?.addEventListener('change', function(){ vbBoChon(); vbTimKiem(); });
+    var cur = document.getElementById('inpMSCVGoc').value;
+    if (cur) { document.getElementById('vbDaChonText').textContent = cur; document.getElementById('vbDaChon').style.display = ''; }
+});
+
+// Tự động đồng bộ Đơn vị chủ trì theo Người chủ trì được chọn (vẫn cho sửa lại thủ công sau đó)
+(function() {
+    function dongBoDonVi() {
+        var selCT = document.getElementById('selChuTri');
+        var selDV = document.getElementById('selDVChuTri');
+        if (!selCT || !selDV) return;
+        var opt = selCT.options[selCT.selectedIndex];
+        var maDV = opt ? opt.getAttribute('data-madv') : null;
+        if (!maDV) return;
+        if (selDV.tomselect) selDV.tomselect.setValue(maDV);
+        else selDV.value = maDV;
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        var selCT = document.getElementById('selChuTri');
+        if (!selCT) return;
+        selCT.addEventListener('change', dongBoDonVi);
+        if (selCT.tomselect) selCT.tomselect.on('change', dongBoDonVi);
+    });
+})();
+
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe',  label: 'Tiêu đề' },
+        { id: 'selChuTri',  label: 'Người chủ trì' },
+        { id: 'selDVChuTri', label: 'Đơn vị chủ trì' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim() || el.value === '0';
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+            if (el.tomselect) el.tomselect.on('change', () => { el._dirty = true; validate(false); });
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

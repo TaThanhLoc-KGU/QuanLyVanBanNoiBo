@@ -1,0 +1,149 @@
+@model CongVan.Models.LichNoiBoDonViFormViewModel
+@{
+    bool isNew = Model.LichNoiBoDonVi.MaLich == 0;
+    ViewData["Title"] = isNew ? "Thêm lịch nội bộ đơn vị" : "Cập nhật lịch nội bộ đơn vị";
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-calendar2-week-fill me-2 text-primary"></i>@ViewData["Title"]</h1>
+    @if (!isNew)
+    {
+        <span class="sbadge sbadge-info"><i class="bi bi-pencil-square"></i>Đang chỉnh sửa</span>
+    }
+    <div class="page-header-actions">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" autocomplete="off">
+    <input asp-for="LichNoiBoDonVi.MaLich" type="hidden" />
+    <input asp-for="LichNoiBoDonVi.MaDV" type="hidden" />
+
+    <div class="form-section">
+        <div class="form-section-header">
+            <span class="step-num">1</span>
+            Thông tin lịch
+        </div>
+        <div class="form-section-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Tiêu đề <span class="form-required">*</span></label>
+                    <input asp-for="LichNoiBoDonVi.TieuDe" id="inpTieuDe" class="form-control" placeholder="Họp giao ban tuần, sinh hoạt đơn vị..." />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Bắt đầu <span class="form-required">*</span></label>
+                    <input asp-for="LichNoiBoDonVi.ThoiGianBatDau" id="inpBatDau" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Kết thúc</label>
+                    <input asp-for="LichNoiBoDonVi.ThoiGianKetThuc" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Loại</label>
+                    <select asp-for="LichNoiBoDonVi.LoaiSuKien" class="form-select ts-select">
+                        <option value="1">Họp</option>
+                        <option value="2">Công tác</option>
+                        <option value="3">Sự kiện</option>
+                        <option value="4">Khác</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Địa điểm</label>
+                    <input asp-for="LichNoiBoDonVi.DiaDiem" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Nội dung</label>
+                    <textarea asp-for="LichNoiBoDonVi.NoiDung" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-floppy-fill me-1"></i>Lưu lịch
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-x-lg me-1"></i>Hủy
+        </a>
+        @if (!isNew)
+        {
+            <form asp-action="Xoa" method="post" class="d-inline ms-auto" onsubmit="return confirm('Xóa lịch này?')">
+                <input name="maLich" type="hidden" value="@Model.LichNoiBoDonVi.MaLich" />
+                <button type="submit" class="btn btn-outline-danger btn-lg">
+                    <i class="bi bi-trash3-fill me-1"></i>Xóa
+                </button>
+            </form>
+        }
+    </div>
+</form>
+
+@section Scripts {
+<script>
+(function() {
+    const REQ = [
+        { id: 'inpTieuDe', label: 'Tiêu đề' },
+        { id: 'inpBatDau', label: 'Thời gian bắt đầu' },
+    ];
+
+    function isEmpty(el) {
+        return !el || !el.value || !el.value.trim();
+    }
+
+    function getErrEl(el) {
+        const eid = 'verr_' + el.id;
+        let e = document.getElementById(eid);
+        if (!e) {
+            e = document.createElement('div');
+            e.id = eid;
+            e.style.cssText = 'font-size:12px;color:var(--danger);margin-top:3px;display:none;';
+            const parent = el.closest('.input-group') || el.parentElement;
+            parent.insertAdjacentElement('afterend', e);
+        }
+        return e;
+    }
+
+    function validate(markDirty) {
+        let ok = true;
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            if (markDirty) el._dirty = true;
+            const bad = isEmpty(el);
+            if (bad) ok = false;
+            const show = bad && !!el._dirty;
+            const errEl = getErrEl(el);
+            errEl.textContent = f.label + ' không được để trống';
+            errEl.style.display = show ? '' : 'none';
+            const ctrl = el.closest('.input-group') || el;
+            ctrl.style.outline = show ? '2px solid var(--danger)' : '';
+            ctrl.style.borderRadius = show ? '6px' : '';
+        });
+        const btn = document.querySelector('button[type="submit"].btn-primary');
+        if (btn) {
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? '' : '0.55';
+            btn.title = ok ? '' : 'Vui lòng điền đầy đủ các trường có dấu *';
+        }
+        return ok;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        REQ.forEach(f => {
+            const el = document.getElementById(f.id);
+            if (!el) return;
+            ['input', 'change', 'blur'].forEach(evt =>
+                el.addEventListener(evt, () => { el._dirty = true; validate(false); })
+            );
+        });
+        validate(false);
+    });
+
+    document.querySelector('form[method="post"]')?.addEventListener('submit', e => {
+        if (!validate(true)) e.preventDefault();
+    });
+})();
+</script>
+}

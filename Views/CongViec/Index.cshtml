@@ -1,0 +1,108 @@
+@model CongVan.Models.CongViecFilterViewModel
+@{ ViewData["Title"] = "Quản lý công việc"; }
+
+<div class="page-header">
+    <h1><i class="bi bi-list-task me-2 text-primary"></i>Quản lý công việc</h1>
+    <div class="page-header-actions">
+        <a asp-action="Nhap" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Giao việc mới
+        </a>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="fb-item">
+        <label class="form-label">Trạng thái</label>
+        <select name="trangThai" class="form-select form-select-sm" style="width:160px;">
+            <option value="">Tất cả</option>
+            <option value="0" selected="@(Model.TrangThai == 0)">Mới giao</option>
+            <option value="1" selected="@(Model.TrangThai == 1)">Đang thực hiện</option>
+            <option value="2" selected="@(Model.TrangThai == 2)">Hoàn thành</option>
+            <option value="3" selected="@(Model.TrangThai == 3)">Đã huỷ</option>
+        </select>
+    </div>
+    <div class="fb-item">
+        <label class="form-label">Đơn vị</label>
+        <select name="maDV" class="form-select form-select-sm" style="width:200px;">
+            <option value="">Tất cả đơn vị</option>
+            @foreach (var dv in Model.DanhSachDonVi)
+            {
+                <option value="@dv.MaDV" selected="@(Model.MaDV == dv.MaDV)">@dv.TenDV</option>
+            }
+        </select>
+    </div>
+    <div class="fb-item fb-grow">
+        <label class="form-label">Tìm kiếm</label>
+        <input name="tuKhoa" class="form-control form-control-sm" placeholder="Tiêu đề công việc..." value="@Model.TuKhoa" />
+    </div>
+    <div class="fb-item" style="align-self:flex-end;">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="chiCuaToi" value="true" id="chiCuaToi" @(Model.ChiCuaToi ? "checked" : "") />
+            <label class="form-check-label" for="chiCuaToi" style="font-size:13px;">Chỉ việc của tôi</label>
+        </div>
+    </div>
+    <div class="fb-actions">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Xóa lọc</a>
+    </div>
+</form>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card"><div class="empty-state"><i class="bi bi-list-task"></i><p>Không có công việc nào</p></div></div>
+}
+else
+{
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;">Tìm thấy <strong style="color:var(--text);">@Model.DanhSach.Count</strong> công việc</div>
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable" style="table-layout:fixed;min-width:760px;">
+            <colgroup>
+                <col>
+                <col style="width:150px;">
+                <col style="width:160px;">
+                <col style="width:110px;">
+                <col style="width:120px;">
+                <col style="width:140px;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Tiêu đề</th>
+                    <th>Đơn vị chủ trì</th>
+                    <th>Người chủ trì</th>
+                    <th>Ưu tiên</th>
+                    <th>Hạn xử lý</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var cv in Model.DanhSach)
+            {
+                string urlChiTiet = Url.Action("ChiTiet", "CongViec", new { id = cv.MaCV })!;
+                <tr onclick="rowNav(event,'@urlChiTiet')">
+                    <td class="td-ellipsis" title="@cv.TieuDe">
+                        <a href="@urlChiTiet" style="color:var(--primary);text-decoration:none;font-weight:600;">@cv.TieuDe</a>
+                    </td>
+                    <td class="td-ellipsis fs-13" title="@cv.TenDV">@cv.TenDV</td>
+                    <td class="td-ellipsis fs-13" title="@cv.TenNVChuTri">@cv.TenNVChuTri</td>
+                    <td class="fs-13">@cv.TenMucDo</td>
+                    <td class="fs-13">@(cv.HanXuLy?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td>
+                        <span class="badge-status @cv.CssBadge">
+                            @(cv.QuaHan ? "Quá hạn" : cv.TenTrangThai)
+                        </span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+<script>
+function rowNav(e, url) {
+    if (e.target.closest('a,button')) return;
+    window.location.href = url;
+}
+</script>
+}

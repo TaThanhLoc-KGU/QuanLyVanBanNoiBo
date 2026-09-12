@@ -1,0 +1,312 @@
+@model CongVan.Models.HoSoCongViecChiTietViewModel
+@{
+    ViewData["Title"] = "Chi tiết hồ sơ công việc";
+    var quyen = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool isAdminOrVT = CongVan.Models.ChucNangDangKy.CoQuyen(quyen, chucNang, "HoSoCongViec.QuanLyTatCa");
+    var maNVHienTai = (short)(ViewBag.MaNV ?? 0);
+    var hs = Model.HoSoCongViec;
+    bool coLienQuan = isAdminOrVT || hs.MaNVPhuTrach == maNVHienTai || hs.MaNVTao == maNVHienTai;
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-folder2-open me-2 text-primary"></i>@hs.TieuDe</h1>
+        <p class="page-header-sub">Mã hồ sơ: #@hs.MaHoSo</p>
+    </div>
+    <div class="page-header-actions">
+        @if (coLienQuan)
+        {
+            <a asp-action="Nhap" asp-route-id="@hs.MaHoSo" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle text-primary"></i>
+                <span class="card-title">Thông tin hồ sơ</span>
+                <span class="ms-auto badge-status @hs.CssBadge">@hs.TenTrangThai</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl">Mô tả</th>
+                        <td class="detail-val" style="white-space:pre-line;">@(string.IsNullOrEmpty(hs.MoTa) ? "—" : hs.MoTa)</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Đơn vị phụ trách</th>
+                        <td class="detail-val" style="font-weight:600;">@hs.TenDVPhuTrach</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Người phụ trách</th>
+                        <td class="detail-val">@hs.TenNVPhuTrach</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Ngày mở</th>
+                        <td class="detail-val">@hs.NgayMo.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    @if (hs.NgayDong.HasValue)
+                    {
+                        <tr>
+                            <th class="detail-lbl">Ngày đóng</th>
+                            <td class="detail-val">@hs.NgayDong.Value.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                    }
+                    @if (!string.IsNullOrEmpty(hs.GhiChu))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Ghi chú</th>
+                            <td class="detail-val" style="color:var(--muted);">@hs.GhiChu</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+            @if (coLienQuan)
+            {
+                <div class="card-body border-top d-flex gap-2 flex-wrap">
+                    @if (hs.TrangThai != 1)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="capNhatTrangThai(1)">
+                            <i class="bi bi-pause-circle me-1"></i>Tạm đóng
+                        </button>
+                    }
+                    @if (hs.TrangThai != 2)
+                    {
+                        <button type="button" class="btn btn-sm btn-success" onclick="capNhatTrangThai(2)">
+                            <i class="bi bi-check-circle me-1"></i>Đóng hồ sơ
+                        </button>
+                    }
+                    @if (hs.TrangThai != 0)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="capNhatTrangThai(0)">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Mở lại
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-list-task text-primary"></i>
+                <span class="card-title">Công việc liên quan</span>
+                <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">@Model.CongViecLienQuan.Count việc</span>
+                @if (coLienQuan)
+                {
+                    <button type="button" class="btn btn-xs btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#modalGanCV">
+                        <i class="bi bi-plus-lg me-1"></i>Gắn thêm
+                    </button>
+                }
+            </div>
+            @if (!Model.CongViecLienQuan.Any())
+            {
+                <div class="card-body"><span class="text-muted fs-13">Chưa gắn công việc nào.</span></div>
+            }
+            else
+            {
+                <div class="tbl-wrap">
+                    <table class="app-table" style="table-layout:fixed;">
+                        <colgroup><col><col style="width:150px;"><col style="width:120px;"><col style="width:48px;"></colgroup>
+                        <tbody>
+                        @foreach (var cv in Model.CongViecLienQuan)
+                        {
+                            <tr>
+                                <td class="td-ellipsis" title="@cv.TieuDe">
+                                    <a asp-controller="CongViec" asp-action="ChiTiet" asp-route-id="@cv.MaCV" style="color:var(--primary);text-decoration:none;">@cv.TieuDe</a>
+                                </td>
+                                <td class="fs-13 td-ellipsis">@cv.TenNVChuTri</td>
+                                <td><span class="badge-status @cv.CssBadge">@cv.TenTrangThai</span></td>
+                                <td style="text-align:center;">
+                                    @if (coLienQuan)
+                                    {
+                                        <form asp-action="GoCongViec" method="post" onsubmit="return confirm('Gỡ công việc này khỏi hồ sơ?')">
+                                            <input type="hidden" name="maHoSo" value="@hs.MaHoSo" />
+                                            <input type="hidden" name="maCV" value="@cv.MaCV" />
+                                            <button type="submit" class="btn btn-icon btn-outline-danger" title="Gỡ khỏi hồ sơ">
+                                                <i class="bi bi-x-lg" style="font-size:12px;"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-text text-secondary"></i>
+                <span class="card-title">Văn bản liên quan</span>
+                <span class="ms-auto" style="font-size:12.5px;color:var(--muted);">@Model.VanBanLienQuan.Count văn bản</span>
+                @if (coLienQuan)
+                {
+                    <button type="button" class="btn btn-xs btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#modalGanVB">
+                        <i class="bi bi-plus-lg me-1"></i>Gắn thêm
+                    </button>
+                }
+            </div>
+            @if (!Model.VanBanLienQuan.Any())
+            {
+                <div class="card-body"><span class="text-muted fs-13">Chưa gắn văn bản nào.</span></div>
+            }
+            else
+            {
+                <div class="tbl-wrap">
+                    <table class="app-table" style="table-layout:fixed;">
+                        <colgroup><col style="width:130px;"><col><col style="width:100px;"><col style="width:48px;"></colgroup>
+                        <tbody>
+                        @foreach (var vb in Model.VanBanLienQuan)
+                        {
+                            <tr>
+                                <td class="fs-13">@vb.TenLoaiVanBan</td>
+                                <td class="td-ellipsis" title="@vb.TieuDe">
+                                    <a href="@vb.UrlChiTiet" style="color:var(--primary);text-decoration:none;">@(vb.TieuDe ?? vb.MSCV.Trim())</a>
+                                </td>
+                                <td class="fs-13">@(vb.NgayVanBan?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td style="text-align:center;">
+                                    @if (coLienQuan)
+                                    {
+                                        <form asp-action="GoVanBan" method="post" onsubmit="return confirm('Gỡ văn bản này khỏi hồ sơ?')">
+                                            <input type="hidden" name="maHoSo" value="@hs.MaHoSo" />
+                                            <input type="hidden" name="id" value="@vb.ID" />
+                                            <button type="submit" class="btn btn-icon btn-outline-danger" title="Gỡ khỏi hồ sơ">
+                                                <i class="bi bi-x-lg" style="font-size:12px;"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-paperclip text-secondary"></i>
+                <span class="card-title">File hồ sơ</span>
+            </div>
+            @if (coLienQuan)
+            {
+                <div class="card-body border-bottom">
+                    <form asp-action="UploadFile" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="maHoSo" value="@hs.MaHoSo" />
+                        <input type="file" name="file" class="form-control form-control-sm mb-2" />
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-upload me-1"></i>Tải lên
+                        </button>
+                    </form>
+                </div>
+            }
+            <div class="card-body">
+                @if (!Model.DanhSachFile.Any())
+                {
+                    <span class="text-muted fs-13">Chưa có file.</span>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var f in Model.DanhSachFile)
+                        {
+                            <li class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-file-earmark-text text-muted"></i>
+                                <span class="flex-grow-1 fs-13" style="overflow-wrap:anywhere;">@f.TenFile</span>
+                                <a href="/view/@f.DuongDan" target="_blank" class="btn btn-icon btn-outline-primary" title="Xem online">
+                                    <i class="bi bi-eye" style="font-size:12px;"></i>
+                                </a>
+                                <a href="/files/@f.DuongDan" class="btn btn-icon btn-outline-secondary" title="Tải file">
+                                    <i class="bi bi-download" style="font-size:12px;"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal gắn công việc -->
+<div class="modal fade" id="modalGanCV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="GanCongViec" method="post">
+                <input type="hidden" name="maHoSo" value="@hs.MaHoSo" />
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-list-task me-2 text-primary"></i>Gắn công việc vào hồ sơ</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Mã công việc (xem trong Quản lý công việc)</label>
+                    <input type="number" name="maCV" class="form-control" placeholder="VD: 5" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Gắn vào hồ sơ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal gắn văn bản -->
+<div class="modal fade" id="modalGanVB" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="GanVanBan" method="post">
+                <input type="hidden" name="maHoSo" value="@hs.MaHoSo" />
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Gắn văn bản vào hồ sơ</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Loại văn bản</label>
+                    <select name="loaiVanBan" class="form-select mb-3">
+                        <option value="1">Văn bản đến</option>
+                        <option value="2">Văn bản đi</option>
+                        <option value="3">Văn bản điều hành</option>
+                    </select>
+                    <label class="form-label">Mã số văn bản (MSCV — xem trong chi tiết văn bản)</label>
+                    <input type="text" name="mscv" class="form-control" placeholder="VD: 2026080001" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Gắn vào hồ sơ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function capNhatTrangThai(trangThai) {
+    fetch('@Url.Action("CapNhatTrangThai", "HoSoCongViec")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'maHoSo=' + @hs.MaHoSo + '&trangThai=' + trangThai
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) window.location.reload();
+        else alert(d.msg || 'Lỗi cập nhật trạng thái');
+    })
+    .catch(() => alert('Lỗi kết nối, vui lòng thử lại'));
+}
+</script>
+}
