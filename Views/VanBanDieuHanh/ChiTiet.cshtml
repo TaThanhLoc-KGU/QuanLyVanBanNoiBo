@@ -1,0 +1,361 @@
+@model CongVan.Models.VanBanDieuHanh
+@{ ViewData["Title"] = "Chi tiết văn bản điều hành"; }
+@{
+    var quyen = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool CoQuyen(string ma) => CongVan.Models.ChucNangDangKy.CoQuyen(quyen, chucNang, ma);
+    bool coTheNhap = CoQuyen("VanBanDieuHanh.Nhap");
+    bool coTheKySo = CoQuyen("VanBanDieuHanh.KySo");
+    var trinhKy = ViewBag.TrinhKyDangHoatDong as CongVan.Models.TrinhKy;
+    var dsNhanVien = ViewBag.NhanVien as List<CongVan.Models.NhanVien> ?? new();
+    var maNVHienTai = (short)(ViewBag.MaNV ?? 0);
+    var capDangCho = trinhKy?.DanhSachCap.Where(c => c.TrangThai == 0).OrderBy(c => c.ThuTu).FirstOrDefault();
+    bool laCapCuoi(CongVan.Models.TrinhKyCap c) => trinhKy != null && c.ThuTu == trinhKy.DanhSachCap.Max(x => x.ThuTu);
+    bool duocXuLyCap(CongVan.Models.TrinhKyCap c) => capDangCho?.ID == c.ID && (c.MaNVDuyet == maNVHienTai || coTheKySo);
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-gear-fill me-2 text-primary"></i>Chi tiết văn bản điều hành</h1>
+        <p class="page-header-sub">Mã số: @Model.MSCV?.Trim()</p>
+    </div>
+    <div class="page-header-actions">
+        @if (coTheNhap)
+        {
+            <a asp-action="Nhap" asp-route-id="@Model.MSCV?.Trim()" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle text-primary"></i>
+                <span class="card-title">Thông tin văn bản</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl">Số ký hiệu</th>
+                        <td class="detail-val" style="font-weight:700;font-size:16px;">@(Model.STT1 ?? Model.STT.ToString())</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(Model.MSCVDi))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Văn bản đi gốc</th>
+                            <td class="detail-val">
+                                <a asp-controller="CongVanDi" asp-action="ChiTiet" asp-route-id="@Model.MSCVDi?.Trim()"
+                                   style="color:var(--primary);">
+                                    <i class="bi bi-send-fill me-1"></i>Xem trong Sổ văn bản đi — @Model.MSCVDi?.Trim()
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <th class="detail-lbl">Ngày ban hành</th>
+                        <td class="detail-val">@Model.NgayBanHanh.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Loại văn bản</th>
+                        <td class="detail-val">@Model.TenLVB</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Sổ văn bản</th>
+                        <td class="detail-val">@Model.TenSCV</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Trích yếu</th>
+                        <td class="detail-val" style="font-weight:600;">@Model.TrichYeu</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Người ký</th>
+                        <td class="detail-val">@Model.TenLDKy</td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Phạm vi áp dụng</th>
+                        <td class="detail-val" style="white-space:pre-line;">@Model.PhamViApDung</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(Model.GhiChu))
+                    {
+                        <tr>
+                            <th class="detail-lbl">Ghi chú</th>
+                            <td class="detail-val" style="color:var(--muted);">@Model.GhiChu</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-paperclip text-secondary"></i>
+                <span class="card-title">File đính kèm</span>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(Model.FileDinhKem))
+                {
+                    <div class="d-flex gap-2">
+                        <a href="/view/@Model.FileDinhKem" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>Xem online
+                        </a>
+                        <a href="/files/@Model.FileDinhKem" class="btn btn-outline-secondary">
+                            <i class="bi bi-download me-1"></i>Tải file đính kèm
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <span class="text-muted fs-13">Chưa có file đính kèm — có thể bổ sung khi chỉnh sửa.</span>
+                }
+            </div>
+        </div>
+
+        @if (coTheKySo)
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-patch-check-fill text-success"></i>
+                    <span class="card-title">Ký số</span>
+                </div>
+                <div class="card-body">
+                    @if (Model.DaKySo)
+                    {
+                        <div class="mb-2">
+                            <span class="sbadge sbadge-success"><i class="bi bi-patch-check-fill"></i>Đã ký số @(!string.IsNullOrEmpty(Model.LoaiChungThu) ? $"— {Model.LoaiChungThu}" : "")</span>
+                        </div>
+                        <div class="fs-13 text-muted mb-3">
+                            @Model.NgayKySo?.ToString("dd/MM/yyyy HH:mm") — @Model.TenNVKySo
+                        </div>
+                    }
+                    else if (trinhKy != null)
+                    {
+                        <p class="fs-13 text-muted mb-2">
+                            Đang trình ký nhiều cấp — do <strong>@trinhKy.TenNVTrinh</strong> mở lúc @trinhKy.NgayTrinh.ToString("dd/MM/yyyy HH:mm").
+                            @if (!string.IsNullOrEmpty(trinhKy.GhiChu)) { <span>Ghi chú: @trinhKy.GhiChu</span> }
+                        </p>
+                        <div class="timeline mb-2">
+                            @foreach (var c in trinhKy.DanhSachCap.OrderBy(x => x.ThuTu))
+                            {
+                                <div class="timeline-item">
+                                    <div class="timeline-dot" style="background:@(c.TrangThai==1||c.TrangThai==3?"var(--success)":c.TrangThai==2?"var(--danger)":"var(--muted)");"></div>
+                                    <div class="timeline-content">
+                                        <div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Cấp @c.ThuTu @(laCapCuoi(c) ? "(ký chính thức)" : "")</div>
+                                        <div style="font-weight:600;font-size:13.5px;">@c.TenNVDuyet</div>
+                                        <div class="fs-12 mt-1">
+                                            @switch (c.TrangThai)
+                                            {
+                                                case 1: <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Đã duyệt @c.NgayXL?.ToString("dd/MM HH:mm")</span> break;
+                                                case 2: <span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Từ chối: @c.GhiChu</span> break;
+                                                case 3: <span class="text-success"><i class="bi bi-patch-check-fill me-1"></i>Đã ký chính thức @c.NgayXL?.ToString("dd/MM HH:mm")</span> break;
+                                                default: <span class="text-muted">Đang chờ duyệt</span> break;
+                                            }
+                                        </div>
+                                        @if (duocXuLyCap(c) && !laCapCuoi(c))
+                                        {
+                                            <div class="d-flex gap-2 mt-2">
+                                                <button type="button" class="btn btn-sm btn-success" onclick="duyetTrinhKy(@c.ID)"><i class="bi bi-check-lg me-1"></i>Duyệt</button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="tuChoiTrinhKy(@c.ID)"><i class="bi bi-x-lg me-1"></i>Từ chối</button>
+                                            </div>
+                                        }
+                                        @if (duocXuLyCap(c) && laCapCuoi(c))
+                                        {
+                                            <div class="d-flex gap-2 mt-2">
+                                                <button type="button" class="btn btn-sm btn-success" onclick="new bootstrap.Modal(document.getElementById('modalTaiFileDaKy')).show()"><i class="bi bi-upload me-1"></i>Ký chính thức (tải file đã ký)</button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="tuChoiTrinhKy(@c.ID)"><i class="bi bi-x-lg me-1"></i>Từ chối</button>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="fs-13 text-muted">
+                            Chưa ký số. Tải file bên trên về, dùng phần mềm VGCA/VNPT-CA sẵn có trên máy để ký,
+                            rồi tải file đã ký lên đây — hệ thống sẽ thay file chính thức bằng bản đã ký. Hoặc mở
+                            1 chuỗi "Trình ký nhiều cấp" nếu văn bản cần lãnh đạo duyệt qua nhiều cấp trước khi ký.
+                        </p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="new bootstrap.Modal(document.getElementById('modalTaiFileDaKy')).show()">
+                                <i class="bi bi-upload me-1"></i>Tải file đã ký lên
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="moTrinhKy()">
+                                <i class="bi bi-signpost-split me-1"></i>Trình ký nhiều cấp
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle text-info"></i>
+                <span class="card-title">Thông tin hệ thống</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl">
+                    <tr>
+                        <th class="detail-lbl" style="width:120px;">Ngày nhập</th>
+                        <td class="detail-val">@Model.NgayNhap.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (coTheKySo)
+{
+    <!-- Modal tải file đã ký số -->
+    <div class="modal fade" id="modalTaiFileDaKy" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="TaiFileDaKy" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="mscv" value="@Model.MSCV?.Trim()" />
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-patch-check-fill me-2 text-success"></i>Tải file đã ký số</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted">
+                            Dùng phần mềm ký số sẵn có trên máy (VGCA, VNPT-CA, VNPT-CA Token...) để ký file đã tải về ở trên,
+                            sau đó chọn file PDF đã ký để tải lên đây.
+                        </p>
+                        <label class="form-label">Loại chứng thư đã dùng <span class="form-required">*</span></label>
+                        <select name="loaiChungThu" class="form-select mb-2" required>
+                            <option value="">-- Chọn --</option>
+                            <option value="VGCA">VGCA (Ban Cơ yếu Chính phủ)</option>
+                            <option value="VNPT-CA">VNPT-CA</option>
+                            <option value="VNPT-CA Token">VNPT-CA Token</option>
+                        </select>
+                        <label class="form-label">File đã ký (PDF) <span class="form-required">*</span></label>
+                        <input type="file" name="fileDaKy" class="form-control" accept=".pdf" required />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i>Lưu file đã ký
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Trình ký nhiều cấp -->
+    <div class="modal fade" id="modalTrinhKy" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-signpost-split me-2 text-primary"></i>Trình ký nhiều cấp</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">Chọn người duyệt <strong>theo đúng thứ tự bấm chọn</strong> — người cuối cùng chọn sẽ là cấp ký chính thức (tải file đã ký lên).</p>
+                    <label class="form-label">Người duyệt theo thứ tự <span class="form-required">*</span></label>
+                    <select id="tkNguoiDuyet" class="form-select ts-select mb-2" multiple>
+                        @foreach (var nv in dsNhanVien)
+                        {
+                            <option value="@nv.MaNV">@nv.HoNV @nv.TenNV</option>
+                        }
+                    </select>
+                    <label class="form-label">Ghi chú</label>
+                    <textarea id="tkGhiChu" class="form-control" rows="2" placeholder="Không bắt buộc"></textarea>
+                    <div id="tkError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="xacNhanTrinhKy()">
+                        <i class="bi bi-send me-1"></i>Trình ký
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Từ chối trình ký -->
+    <div class="modal fade" id="modalTuChoiTrinhKy" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-x-circle me-2 text-danger"></i>Từ chối trình ký</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">Từ chối sẽ hủy toàn bộ chuỗi trình ký này — người trình cần trình ký lại từ đầu.</p>
+                    <label class="form-label">Lý do <span class="form-required">*</span></label>
+                    <textarea id="tctkLyDo" class="form-control" rows="2"></textarea>
+                    <div id="tctkError" class="text-danger mt-1 fs-12" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="xacNhanTuChoiTrinhKy()">
+                        <i class="bi bi-x-lg me-1"></i>Từ chối
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+    function moTrinhKy() {
+        document.getElementById('tkError').style.display = 'none';
+        var sel = document.getElementById('tkNguoiDuyet');
+        if (sel.tomselect) sel.tomselect.clear();
+        document.getElementById('tkGhiChu').value = '';
+        new bootstrap.Modal(document.getElementById('modalTrinhKy')).show();
+    }
+
+    function xacNhanTrinhKy() {
+        var sel = document.getElementById('tkNguoiDuyet');
+        var nguoiDuyet = sel.tomselect ? sel.tomselect.getValue() : [];
+        var err = document.getElementById('tkError');
+        if (!nguoiDuyet || nguoiDuyet.length === 0) { err.textContent = 'Vui lòng chọn ít nhất 1 người duyệt'; err.style.display = ''; return; }
+
+        var body = 'mscv=' + encodeURIComponent('@Model.MSCV?.Trim()') + '&ghiChu=' + encodeURIComponent(document.getElementById('tkGhiChu').value.trim());
+        nguoiDuyet.forEach(function(v) { body += '&nguoiDuyet=' + v; });
+
+        fetch('@Url.Action("TrinhKy", "VanBanDieuHanh")', {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
+        }).then(function() { window.location.reload(); });
+    }
+
+    function duyetTrinhKy(capId) {
+        if (!confirm('Duyệt cấp này?')) return;
+        fetch('@Url.Action("DuyetTrinhKy", "VanBanDieuHanh")', {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'mscv=' + encodeURIComponent('@Model.MSCV?.Trim()') + '&capId=' + capId
+        }).then(function() { window.location.reload(); });
+    }
+
+    var _tctkCapId = 0;
+    function tuChoiTrinhKy(capId) {
+        _tctkCapId = capId;
+        document.getElementById('tctkLyDo').value = '';
+        document.getElementById('tctkError').style.display = 'none';
+        new bootstrap.Modal(document.getElementById('modalTuChoiTrinhKy')).show();
+    }
+
+    function xacNhanTuChoiTrinhKy() {
+        var lyDo = document.getElementById('tctkLyDo').value.trim();
+        var err = document.getElementById('tctkError');
+        if (!lyDo) { err.textContent = 'Vui lòng nhập lý do'; err.style.display = ''; return; }
+        fetch('@Url.Action("TuChoiTrinhKy", "VanBanDieuHanh")', {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'mscv=' + encodeURIComponent('@Model.MSCV?.Trim()') + '&capId=' + _tctkCapId + '&lyDo=' + encodeURIComponent(lyDo)
+        }).then(function() { window.location.reload(); });
+    }
+    </script>
+}

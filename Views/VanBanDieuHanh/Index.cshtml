@@ -1,0 +1,171 @@
+@model CongVan.Models.VanBanDieuHanhFilterViewModel
+@{ ViewData["Title"] = "Sổ văn bản điều hành"; }
+@{
+    var quyenList = ViewBag.QuyenList as List<int> ?? new();
+    var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
+    bool CoQuyen(string ma) => CongVan.Models.ChucNangDangKy.CoQuyen(quyenList, chucNang, ma);
+    bool coTheNhap = CoQuyen("VanBanDieuHanh.Nhap");
+    bool coTheExcel = CoQuyen("VanBanDieuHanh.Excel");
+}
+
+<div class="page-header">
+    <h1><i class="bi bi-gear-fill me-2 text-primary"></i>Sổ văn bản điều hành</h1>
+    <div class="page-header-actions">
+        <a asp-action="XuatExcel" asp-route-nam="@Model.Nam" asp-route-maSCV="@Model.MaSCV" asp-route-tuKhoa="@Model.TuKhoa"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+        </a>
+        @if (coTheExcel)
+        {
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNhapExcel">
+                <i class="bi bi-file-earmark-arrow-up me-1"></i>Nhập từ Excel
+            </button>
+        }
+        @if (coTheNhap)
+        {
+            <a asp-action="Nhap" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Ban hành văn bản mới
+            </a>
+        }
+    </div>
+</div>
+
+<!-- Modal nhập văn bản điều hành từ Excel -->
+<div class="modal fade" id="modalNhapExcel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="NhapExcel" method="post" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Nhập văn bản điều hành từ Excel</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">
+                        Dùng để hoàn thiện hồ sơ cũ hàng loạt — file phải đúng theo mẫu.
+                    </p>
+                    <a asp-action="TaiMauExcel" class="btn btn-sm btn-outline-primary mb-3">
+                        <i class="bi bi-download me-1"></i>Tải file mẫu
+                    </a>
+                    <label class="form-label">Chọn file Excel (.xlsx)</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i>Nhập file
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="fb-item">
+        <label class="form-label">Năm</label>
+        <select name="nam" class="form-select form-select-sm" style="width:104px;">
+            @for (int y = DateTime.Now.Year; y >= 2020; y--)
+            {
+                <option value="@y" selected="@(Model.Nam == y)">@y</option>
+            }
+        </select>
+    </div>
+    <div class="fb-item">
+        <label class="form-label">Sổ văn bản</label>
+        <select name="maSCV" class="form-select form-select-sm" style="width:200px;">
+            <option value="">Tất cả sổ</option>
+            @foreach (var s in Model.DanhSachSoCV)
+            {
+                <option value="@s.MaSCV" selected="@(Model.MaSCV == s.MaSCV)">@s.TenSCV</option>
+            }
+        </select>
+    </div>
+    <div class="fb-item fb-grow">
+        <label class="form-label">Tìm kiếm</label>
+        <input name="tuKhoa" class="form-control form-control-sm" placeholder="Số văn bản, trích yếu..." value="@Model.TuKhoa" />
+    </div>
+    <div class="fb-actions">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Xóa lọc</a>
+    </div>
+</form>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card"><div class="empty-state"><i class="bi bi-gear"></i><p>Không có văn bản điều hành nào</p></div></div>
+}
+else
+{
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;">Tìm thấy <strong style="color:var(--text);">@Model.DanhSach.Count</strong> văn bản</div>
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable" style="table-layout:fixed;min-width:760px;">
+            <colgroup>
+                <col style="width:130px;">
+                <col style="width:110px;">
+                <col style="width:150px;">
+                <col>
+                <col style="width:170px;">
+                <col style="width:48px;">
+                <col style="width:48px;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Số văn bản</th>
+                    <th>Ngày ban hành</th>
+                    <th>Loại văn bản</th>
+                    <th>Trích yếu</th>
+                    <th>Người ký</th>
+                    <th style="text-align:center;"><i class="bi bi-paperclip"></i></th>
+                    <th style="text-align:center;">Sửa</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var vb in Model.DanhSach)
+            {
+                string urlChiTiet = Url.Action("ChiTiet","VanBanDieuHanh",new{id=vb.MSCV?.Trim()})!;
+                <tr onclick="rowNav(event,'@urlChiTiet')">
+                    <td style="font-weight:700;">
+                        <a href="@urlChiTiet" style="color:var(--primary);text-decoration:none;">@(vb.STT1 ?? vb.STT.ToString())</a>
+                    </td>
+                    <td class="fs-13">@vb.NgayBanHanh.ToString("dd/MM/yyyy")</td>
+                    <td class="td-ellipsis fs-13" title="@vb.TenLVB">@vb.TenLVB</td>
+                    <td class="td-ellipsis" title="@vb.TrichYeu">@vb.TrichYeu</td>
+                    <td class="td-ellipsis fs-13" title="@vb.TenLDKy">@vb.TenLDKy</td>
+                    <td style="text-align:center;white-space:nowrap;">
+                        @if (vb.DaKySo)
+                        {
+                            <i class="bi bi-patch-check-fill text-success me-1" title="Đã ký số@(!string.IsNullOrEmpty(vb.LoaiChungThu) ? $" — {vb.LoaiChungThu}" : "")"></i>
+                        }
+                        @if (!string.IsNullOrEmpty(vb.FileDinhKem))
+                        {
+                            <a href="/view/@vb.FileDinhKem" target="_blank" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-primary" title="Xem online">
+                                <i class="bi bi-eye" style="font-size:12px;"></i>
+                            </a>
+                            <a href="/files/@vb.FileDinhKem" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-secondary" title="Tải file">
+                                <i class="bi bi-download" style="font-size:12px;"></i>
+                            </a>
+                        }
+                    </td>
+                    <td style="text-align:center;">
+                        @if (coTheNhap)
+                        {
+                            <a asp-action="Nhap" asp-route-id="@vb.MSCV?.Trim()" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-primary">
+                                <i class="bi bi-pencil" style="font-size:12px;"></i>
+                            </a>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+<script>
+function rowNav(e, url) {
+    if (e.target.closest('a,button')) return;
+    window.location.href = url;
+}
+</script>
+}
