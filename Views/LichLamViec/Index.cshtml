@@ -9,6 +9,7 @@
     var prevMonth = thisMonth.AddMonths(-1);
     var nextMonth = thisMonth.AddMonths(1);
     var today = DateTime.Today;
+    string? linkFeedIcs = ViewBag.LinkFeedIcs as string;
 
     var lichLanhDao = Model.DanhSach.Where(l => l.LoaiLich != 2).ToList();
     var lichCongTac = Model.DanhSach.Where(l => l.LoaiLich == 2).ToList();
@@ -27,6 +28,15 @@
         <p class="page-header-sub">Gồm cả <strong>lịch công tác</strong> (đơn vị / toàn trường) và <strong>lịch nội bộ đơn vị</strong> — bấm vào ngày để xem chi tiết.</p>
     </div>
     <div class="page-header-actions">
+        @if (linkFeedIcs != null)
+        {
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalGoogleCalendar">
+                <i class="bi bi-google me-1"></i>Liên kết Google Calendar
+            </button>
+        }
+        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNhapExcelLich">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i>Nhập từ Excel
+        </button>
         <a asp-action="Nhap" asp-route-loaiLich="2" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-plus-lg me-1"></i>Thêm lịch công tác
         </a>
@@ -36,6 +46,92 @@
                 <i class="bi bi-plus-lg me-1"></i>Thêm lịch lãnh đạo
             </a>
         }
+    </div>
+</div>
+
+@if (linkFeedIcs != null)
+{
+    <!-- Modal liên kết Google Calendar -->
+    <div class="modal fade" id="modalGoogleCalendar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-google me-2 text-danger"></i>Liên kết Google Calendar</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">
+                        Đây là đường dẫn <strong>riêng của bạn</strong> — chỉ hiện lịch của chính bạn
+                        (lịch lãnh đạo của bạn, lịch bạn được kèm theo, lịch công tác toàn trường/đơn vị,
+                        lịch nội bộ đơn vị). <strong>Không chia sẻ</strong> đường dẫn này cho người khác.
+                    </p>
+                    <div class="input-group mb-3">
+                        <input type="text" id="inpLinkIcs" class="form-control fs-12" value="@linkFeedIcs" readonly onclick="this.select()" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="copyLinkIcs()">
+                            <i class="bi bi-clipboard me-1"></i>Sao chép
+                        </button>
+                    </div>
+                    <div class="fs-13">
+                        <div class="fw-700 mb-1">Cách thêm vào Google Calendar (trên máy tính):</div>
+                        <ol class="ps-3 mb-2">
+                            <li>Mở <a href="https://calendar.google.com" target="_blank">Google Calendar</a> → bên trái, cạnh "Lịch khác" bấm dấu <strong>+</strong></li>
+                            <li>Chọn <strong>"Từ URL"</strong></li>
+                            <li>Dán đường dẫn ở trên vào, bấm <strong>"Thêm lịch"</strong></li>
+                        </ol>
+                        <div class="text-muted">Google sẽ tự làm mới lịch định kỳ (thường vài giờ/lần) — sửa/thêm trên hệ thống này sẽ tự xuất hiện, nhưng <strong>sửa trên Google Calendar không đồng bộ ngược lại</strong>. Trên điện thoại, dùng ứng dụng lịch hỗ trợ "đăng ký theo URL" (Google Calendar app trên Android/iOS hiện chưa hỗ trợ thêm trực tiếp — hãy thêm trên máy tính trước, lịch sẽ tự hiện trên app điện thoại cùng tài khoản).</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="@linkFeedIcs" class="btn btn-outline-primary btn-sm" download>
+                        <i class="bi bi-download me-1"></i>Tải file .ics (nhập 1 lần)
+                    </a>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function copyLinkIcs() {
+            const inp = document.getElementById('inpLinkIcs');
+            inp.select();
+            navigator.clipboard?.writeText(inp.value);
+        }
+    </script>
+}
+
+<!-- Modal nhập lịch làm việc từ Excel -->
+<div class="modal fade" id="modalNhapExcelLich" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="NhapExcel" method="post" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-700"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Nhập lịch làm việc từ Excel</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">
+                        Tải file mẫu bên dưới. Cột <strong>Loại lịch, Loại sự kiện, Đơn vị, Phòng họp</strong>
+                        đều có mũi tên xổ xuống để chọn. Lịch nhập qua Excel luôn thuộc về <strong>chính bạn</strong>
+                        (muốn tạo hộ người khác thì dùng nút "Thêm lịch lãnh đạo").
+                        @if (!coTheTao)
+                        {
+                            <span> Bạn chưa có quyền tạo <strong>Lịch lãnh đạo</strong> — các dòng ghi Loại lịch = "Lãnh đạo" sẽ bị bỏ qua, chỉ nhập được "Công tác".</span>
+                        }
+                    </p>
+                    <a asp-action="TaiMauExcel" class="btn btn-sm btn-outline-primary mb-3">
+                        <i class="bi bi-download me-1"></i>Tải file mẫu (kèm danh mục)
+                    </a>
+                    <label class="form-label">Chọn file Excel (.xlsx)</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i>Nhập file
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

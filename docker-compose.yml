@@ -34,6 +34,7 @@ services:
       ConnectionStrings__CongVanConnection: "Data Source=db;Initial Catalog=${DB_NAME};User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       FileStorage__RootPath: /data/files
       OldServerSync__ConnectionString: "${OLD_SERVER_SYNC_CONNECTION}"
+      IcsFeed__SecretKey: "${ICS_FEED_SECRET_KEY}"
     volumes:
       - /home/tainguyen:/data/files   # bind mount thẳng vào thư mục thật trên /home (không qua Docker volume trừu
                                        # tượng) — để upload file trực tiếp qua SFTP/FTP mà app đọc được ngay, không

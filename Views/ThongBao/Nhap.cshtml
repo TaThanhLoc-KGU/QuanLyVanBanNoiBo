@@ -42,6 +42,14 @@
                     <label class="form-label">File đính kèm <span class="text-muted fs-12">(không bắt buộc)</span></label>
                     <input type="file" name="fileDinhKem" class="form-control" />
                 </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="ThongBaoNoiBo.CongKhai" class="form-check-input" type="checkbox" id="chkCongKhai" />
+                        <label class="form-check-label" for="chkCongKhai">
+                            <i class="bi bi-globe2 me-1"></i>Hiển thị lên trang <strong>công khai</strong> (<a href="/cong-khai" target="_blank">/cong-khai</a>) — ai cũng xem được, kể cả <strong>không đăng nhập</strong>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

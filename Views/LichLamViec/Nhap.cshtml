@@ -95,14 +95,33 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Người kèm theo <span class="text-muted fs-12">(không hiện trên lịch chung — chỉ hiện khi xem chi tiết ngày)</span></label>
-                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
-                         style="max-height:200px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
+                        <label class="form-label mb-0">
+                            Người kèm theo — <span id="ktDem" class="text-primary fw-700">0</span> người đã chọn
+                            <span class="text-muted fs-12 d-block">(không hiện trên lịch chung — chỉ hiện khi xem chi tiết ngày)</span>
+                        </label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <select id="ktLocDV" class="form-select form-select-sm" style="width:auto;min-width:190px;" onchange="ktLoc()">
+                                <option value="">Tất cả đơn vị</option>
+                                @foreach (var dv in Model.DanhSachNhanVien.Where(n => n.MaDV > 0)
+                                            .Select(n => new { n.MaDV, n.TenDV }).Distinct().OrderBy(d => d.TenDV))
+                                {
+                                    <option value="@dv.MaDV">@dv.TenDV</option>
+                                }
+                            </select>
+                            <input id="ktTim" class="form-control form-control-sm" style="width:180px;" placeholder="Tìm tên..." oninput="ktLoc()" />
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="ktChonHienThi(true)">Chọn hết (đang hiện)</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="ktChonHienThi(false)">Bỏ chọn</button>
+                        </div>
+                    </div>
+                    <div id="ktGrid" class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+                         style="max-height:220px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
                         @foreach (var nv in Model.DanhSachNhanVien)
                         {
-                            <div class="col">
+                            <div class="col kt-item" data-ten="@((nv.HoNV + " " + nv.TenNV).ToLower())" data-madv="@nv.MaDV">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="nguoiKemTheo" value="@nv.MaNV" id="nv_@nv.MaNV"
+                                    <input class="form-check-input kt-nv" type="checkbox" name="nguoiKemTheo" value="@nv.MaNV" id="nv_@nv.MaNV"
+                                           onchange="ktDem()"
                                            @(Model.DanhSachNguoiKemTheo.Contains(nv.MaNV) ? "checked" : "") />
                                     <label class="form-check-label" for="nv_@nv.MaNV" style="font-size:13px;">@nv.HoNV @nv.TenNV</label>
                                 </div>
@@ -152,6 +171,29 @@ function doiLoaiLich() {
     document.querySelectorAll('.khoi-lanhdao').forEach(function (e) { e.style.display = (v === '2') ? 'none' : ''; });
 }
 document.addEventListener('DOMContentLoaded', doiLoaiLich);
+
+/* ═══ Người kèm theo: tìm tên + lọc theo đơn vị + tick (thay cho kéo tick cả danh sách dài) ═══ */
+function ktLoc() {
+    var loc = document.getElementById('ktLocDV').value;
+    var tu = (document.getElementById('ktTim').value || '').trim().toLowerCase();
+    document.querySelectorAll('#ktGrid .kt-item').forEach(function (it) {
+        var hop = !loc || String(it.dataset.madv || '') === loc;
+        if (hop && tu) hop = it.dataset.ten.indexOf(tu) !== -1;
+        it.style.display = hop ? '' : 'none';
+    });
+}
+function ktChonHienThi(v) {
+    document.querySelectorAll('#ktGrid .kt-item').forEach(function (it) {
+        if (it.style.display === 'none') return;
+        var cb = it.querySelector('.kt-nv'); if (cb) cb.checked = v;
+    });
+    ktDem();
+}
+function ktDem() {
+    var n = document.querySelectorAll('.kt-nv:checked').length;
+    var el = document.getElementById('ktDem'); if (el) el.textContent = n;
+}
+document.addEventListener('DOMContentLoaded', ktDem);
 
 (function() {
     const REQ = [

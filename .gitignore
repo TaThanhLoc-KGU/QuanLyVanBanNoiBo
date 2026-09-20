@@ -32,3 +32,6 @@ check-port-5100.ps1
 apply-bind-mount-tainguyen.ps1
 upload-tainguyen.ps1
 DEPLOY.md
+
+# Script tạm dùng 1 lần (có thể chứa thao tác mật khẩu/dữ liệu thật)
+scratch_*.sql

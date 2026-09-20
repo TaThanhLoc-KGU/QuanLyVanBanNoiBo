@@ -128,10 +128,59 @@ app.Use(async (context, next) =>
     }
 });
 
+// Trang công khai (không cần đăng nhập) — đường dẫn ngắn, dễ nhớ/dễ chia sẻ hơn /Public/Index.
+app.MapControllerRoute(
+    name: "congkhai",
+    pattern: "cong-khai",
+    defaults: new { controller = "Public", action = "Index" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapControllers(); // cần cho các controller dùng attribute routing thuần (Controllers/Api/*)
+
+// Feed .ics CÔNG KHAI (không cần token/đăng nhập) cho trang /cong-khai — cùng phạm vi dữ liệu với
+// trang đó (xem PublicController). Tách riêng khỏi /calendar/{token}.ics (feed CÁ NHÂN có chữ ký,
+// dùng cho người đã đăng nhập ở Lịch làm việc → Liên kết Google Calendar).
+app.MapGet("/calendar/cong-khai.ics", async (CongVan.Services.DbService db) =>
+{
+    // Chỉ mở khi Admin đã bật "công bố tính năng mới" — cùng công tắc với trang /cong-khai.
+    if (!await db.GetTinhNangMoiCongKhaiAsync()) return Results.NotFound();
+    var tuNgay = DateTime.Today.AddDays(-7);
+    var denNgay = DateTime.Today.AddDays(180);
+    var lichLamViec = await db.GetLichLamViecTheoKhoangNgayAsync(tuNgay, denNgay);
+    var ics = CongVan.Services.IcsFeedService.TaoIcs(lichLamViec, new List<CongVan.Models.LichNoiBoDonVi>(), "Lịch làm việc công khai - VNKGU");
+    return Results.Text(ics, "text/calendar; charset=utf-8");
+});
+
+// Feed .ics riêng của từng người dùng để "Liên kết Google Calendar" (đăng ký theo URL — xem
+// Services/IcsFeedService.cs). Đứng NGOÀI mọi controller kế thừa BaseController vì Google Calendar
+// tự động fetch định kỳ, không mang theo cookie đăng nhập — xác thực bằng chữ ký HMAC nhúng thẳng
+// trong URL (token = "<maNV>-<chữ ký>") thay vì session.
+app.MapGet("/calendar/{token}.ics", async (string token, CongVan.Services.DbService db, IConfiguration config) =>
+{
+    var secretKey = CongVan.Services.IcsFeedService.LayKhoaHopLe(config["IcsFeed:SecretKey"]);
+    var parts = token.Split('-', 2);
+    if (secretKey == null || parts.Length != 2 || !short.TryParse(parts[0], out var maNV))
+        return Results.NotFound();
+
+    if (!CongVan.Services.IcsFeedService.ChuKyHopLe(maNV, parts[1], secretKey))
+        return Results.NotFound();
+
+    var nv = await db.GetNhanVienByIdAsync(maNV);
+    if (nv == null || nv.NgayNghiViec != null) return Results.NotFound();
+
+    var tuNgay = DateTime.Today.AddDays(-30);
+    var denNgay = DateTime.Today.AddDays(180);
+    var lichLamViec = await db.GetLichLamViecChoIcsAsync(maNV, tuNgay, denNgay);
+    // Người chưa thuộc đơn vị nào (MaDV=0) → KHÔNG có lịch nội bộ (tránh lộ lịch nội bộ MỌI đơn vị).
+    var lichNoiBo = nv.MaDV == 0
+        ? new List<CongVan.Models.LichNoiBoDonVi>()
+        : await db.GetLichNoiBoTheoKhoangNgayAsync(tuNgay, denNgay, nv.MaDV);
+
+    var ics = CongVan.Services.IcsFeedService.TaoIcs(lichLamViec, lichNoiBo, $"Lịch làm việc - {nv.HoNV} {nv.TenNV}");
+    return Results.Text(ics, "text/calendar; charset=utf-8");
+});
 
 // Download file nằm ngoài wwwroot (luôn ép tải về)
 app.MapGet("/files/{**relativePath}", async (string relativePath, CongVan.Services.FileService fileSvc, HttpContext ctx) =>

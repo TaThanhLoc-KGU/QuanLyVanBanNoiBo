@@ -1,0 +1,178 @@
+@using CongVan.Models
+@{
+    Layout = null;
+    var danhSachLich = ViewBag.DanhSachLich as List<LichLamViec> ?? new();
+    var thongBao = ViewBag.ThongBao as List<ThongBaoNoiBo> ?? new();
+    var linkIcs = ViewBag.LinkIcs as string ?? "";
+    var linkGoogle = ViewBag.LinkGoogleCalendar as string ?? "";
+    var theoNgay = danhSachLich.GroupBy(l => l.ThoiGianBatDau.Date).OrderBy(g => g.Key).ToList();
+    var homNay = DateTime.Today;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lịch làm việc & Thông báo — VNKGU</title>
+    <link rel="icon" type="image/png" href="/img/favicon-vnkgu.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap&subset=vietnamese" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        :root { --primary: #1B6580; --primary-dark: #124659; --warning: #C0392B; }
+        * , *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0; background: #F2F5F9; color: #1F2D3D;
+            font-family: "Be Vietnam Pro", "Segoe UI", system-ui, Arial, sans-serif;
+        }
+        .topbar {
+            background: linear-gradient(135deg, rgba(12,52,68,.92), rgba(27,101,128,.80)), url('/img/campus.jpg') center 40% / cover;
+            color: #fff; padding: 26px 18px 60px;
+        }
+        .topbar-inner { max-width: 880px; margin: 0 auto; }
+        .topbar-title { font-size: 22px; font-weight: 800; margin: 0 0 3px; }
+        .topbar-sub { font-size: 13.5px; opacity: .85; margin: 0; }
+        .wrap { max-width: 880px; margin: -38px auto 40px; padding: 0 18px; }
+        .card-x {
+            background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(11,44,77,.08);
+            padding: 18px 20px; margin-bottom: 18px;
+        }
+        .card-x h2 {
+            font-size: 15px; font-weight: 800; color: var(--primary-dark);
+            display: flex; align-items: center; gap: 8px; margin: 0 0 14px;
+        }
+        .gg-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #fff; border: 1.5px solid #DCE3EC; border-radius: 8px;
+            padding: 10px 16px; font-size: 13.5px; font-weight: 700; color: #1F2D3D;
+            text-decoration: none; transition: border-color .15s, box-shadow .15s;
+        }
+        .gg-btn:hover { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,101,128,.10); color: #1F2D3D; }
+        .link-copy {
+            display: flex; gap: 8px; align-items: center; margin-top: 10px;
+        }
+        .link-copy input {
+            flex: 1; font-size: 12px; border: 1.5px solid #DCE3EC; border-radius: 7px;
+            padding: 8px 10px; color: #6B7C93; background: #F8FAFC;
+        }
+        .tb-item { border-left: 3px solid var(--primary); padding: 10px 14px; margin-bottom: 10px; background: #F8FAFC; border-radius: 0 8px 8px 0; }
+        .tb-item.muc-2 { border-color: #E08E0B; }
+        .tb-item.muc-3 { border-color: var(--warning); }
+        .tb-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+        .tb-meta { font-size: 11.5px; color: #8CA0B3; margin-bottom: 6px; }
+        .tb-noidung { font-size: 13px; white-space: pre-line; }
+        .day-group { margin-bottom: 16px; }
+        .day-head {
+            font-size: 12.5px; font-weight: 800; color: var(--primary-dark);
+            text-transform: uppercase; letter-spacing: .03em;
+            padding-bottom: 6px; margin-bottom: 8px; border-bottom: 2px solid #EAF0F7;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .day-head.today { color: var(--warning); }
+        .ev-item { display: flex; gap: 12px; padding: 8px 4px; border-bottom: 1px dashed #EAF0F7; }
+        .ev-item:last-child { border-bottom: none; }
+        .ev-time { flex: 0 0 52px; font-size: 12.5px; font-weight: 700; color: var(--primary); padding-top: 1px; }
+        .ev-body { flex: 1; min-width: 0; }
+        .ev-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+        .ev-sub { font-size: 11.5px; color: #8CA0B3; margin-top: 2px; }
+        .empty-note { font-size: 13px; color: #8CA0B3; padding: 8px 2px; }
+        .footer-note { text-align: center; font-size: 12px; color: #8CA0B3; margin-top: 24px; }
+        .footer-note a { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-inner">
+        <div class="d-flex align-items-center gap-3"><span style="background:#fff;border-radius:12px;padding:6px 8px;display:inline-flex;"><img src="/img/logo-vnkgu.png" alt="Trường Đại học Kiên Giang" style="height:52px;width:auto;" /></span><div><div class="topbar-title" style="margin:0;">Lịch làm việc &amp; Thông báo</div>
+        <p class="topbar-sub">Trường Đại học Kiên Giang — trang xem công khai, không cần đăng nhập</p></div></div>
+    </div>
+</div>
+
+<div class="wrap">
+
+@if (ViewBag.DaMo != true)
+{
+    <div class="card-x"><div class="empty-note">Trang này chưa được mở. Vui lòng quay lại sau.</div></div>
+}
+else
+{
+    <div class="card-x">
+        <h2><i class="bi bi-google"></i>Xem trên điện thoại qua Google Calendar</h2>
+        <p class="fs-13 text-muted" style="margin-top:-6px;">Bấm nút bên dưới để đăng ký (subscribe) lịch này vào Google Calendar của bạn — lịch mới sẽ tự xuất hiện, không cần quay lại trang này mỗi lần.</p>
+        <a href="@linkGoogle" target="_blank" class="gg-btn">
+            <i class="bi bi-calendar-plus-fill" style="color:var(--primary);"></i>Thêm vào Google Calendar
+        </a>
+        <div class="link-copy">
+            <input type="text" id="inpLinkIcsCK" value="@linkIcs" readonly onclick="this.select()" />
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLinkCK()"><i class="bi bi-clipboard"></i></button>
+        </div>
+    </div>
+
+    @if (thongBao.Any())
+    {
+        <div class="card-x">
+            <h2><i class="bi bi-megaphone-fill"></i>Thông báo</h2>
+            @foreach (var tb in thongBao)
+            {
+                <div class="tb-item muc-@tb.MucDo">
+                    <div class="tb-title">@tb.TieuDe</div>
+                    <div class="tb-meta">@tb.NgayDang.ToString("dd/MM/yyyy HH:mm") — @tb.TenNVDang @(tb.MucDo > 1 ? $"· {tb.TenMucDo}" : "")</div>
+                    <div class="tb-noidung">@tb.NoiDung</div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="card-x">
+        <h2><i class="bi bi-calendar2-check-fill"></i>Lịch làm việc (45 ngày tới)</h2>
+        @if (!theoNgay.Any())
+        {
+            <div class="empty-note">Chưa có lịch nào trong khoảng thời gian này.</div>
+        }
+        else
+        {
+            foreach (var g in theoNgay)
+            {
+                bool isToday = g.Key == homNay;
+                <div class="day-group">
+                    <div class="day-head @(isToday ? "today" : "")">
+                        @g.Key.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN"))
+                        @(isToday ? "· Hôm nay" : "")
+                    </div>
+                    @foreach (var ev in g.OrderBy(e => e.ThoiGianBatDau))
+                    {
+                        var phu = ev.LaLichCongTac
+                            ? (ev.ToanTruong ? "Công tác toàn trường" : $"Công tác — {ev.TenDV}")
+                            : ev.TenNVLanhDao;
+                        <div class="ev-item">
+                            <div class="ev-time">@ev.ThoiGianBatDau.ToString("HH:mm")</div>
+                            <div class="ev-body">
+                                <div class="ev-title"><i class="bi @ev.IconLoaiSuKien me-1" style="color:var(--primary);"></i>@ev.TieuDe</div>
+                                <div class="ev-sub">@phu@(string.IsNullOrWhiteSpace(ev.DiaDiem) ? "" : $" · {ev.DiaDiem}")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+}
+
+    <div class="footer-note">
+        © @DateTime.Now.Year VNKGU · <a href="/Account/Login">Đăng nhập hệ thống nội bộ</a>
+    </div>
+</div>
+
+<script>
+function copyLinkCK() {
+    var inp = document.getElementById('inpLinkIcsCK');
+    inp.select();
+    navigator.clipboard?.writeText(inp.value);
+}
+</script>
+</body>
+</html>

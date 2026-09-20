@@ -13,6 +13,9 @@ public class ThongBaoNoiBo
     public short MaNVDang { get; set; }
     public DateTime NgayDang { get; set; }
     public DateTime? HetHan { get; set; }
+    // Hiện thêm ra trang công khai /cong-khai (không cần đăng nhập) — mặc định false, người đăng
+    // phải chủ động tick (migration 036).
+    public bool CongKhai { get; set; }
 
     // Hiển thị
     public string? TenNVDang { get; set; }
