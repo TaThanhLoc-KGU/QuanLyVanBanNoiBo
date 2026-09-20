@@ -1,0 +1,244 @@
+@model CongVan.Models.XuLyPanelViewModel
+@using CongVan.Models
+@{
+    var dong = Model.DongCuaToi;
+    bool coDong = dong != null;
+    bool laChinh = coDong && dong!.VaiTro == VanBanXuLy.VaiTroChinh;
+    bool laDong = coDong && dong!.VaiTro == VanBanXuLy.VaiTroDongXuLy;
+    bool laXemBiet = coDong && dong!.VaiTro == VanBanXuLy.VaiTroXemBiet;
+    bool coTheChuyen = laChinh || laDong || (!coDong && Model.CoTheChuyenGoc);
+    bool hienPanel = coDong || Model.TatCa.Any() || Model.CoTheChuyenGoc;
+    string idModal = "xl" + Model.LoaiVB + "_" + Model.MSCV.Trim();
+    string TenTt(VanBanXuLy x) => x.TenTrangThai;
+    string CssTt(VanBanXuLy x) => x.TrangThai switch { 3 => "done", 2 => "processing", 4 => "overdue", 5 => "overdue", _ => "new" };
+}
+@if (hienPanel)
+{
+<div class="card mb-3" id="panelXuLyCaNhan">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="card-title"><i class="bi bi-diagram-3-fill me-1 text-primary"></i>Quá trình xử lý theo người</span>
+        <div class="d-flex gap-2 flex-wrap">
+            @if (coTheChuyen)
+            {
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#@(idModal)_chuyen">
+                    <i class="bi bi-send-fill me-1"></i>@(coDong ? "Chuyển tiếp" : "Chuyển xử lý")
+                </button>
+            }
+            @if (laDong)
+            {
+                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#@(idModal)_ykien">
+                    <i class="bi bi-chat-left-text me-1"></i>Cho ý kiến
+                </button>
+            }
+            @if (laChinh)
+            {
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#@(idModal)_ketthuc">
+                    <i class="bi bi-check2-circle me-1"></i>Kết thúc xử lý
+                </button>
+            }
+            @if (laChinh || laDong)
+            {
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#@(idModal)_tralai">
+                    <i class="bi bi-arrow-return-left me-1"></i>Trả lại
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        @if (coDong)
+        {
+            <div class="alert alert-info py-2 fs-13 mb-3">
+                <i class="bi bi-info-circle-fill me-1"></i>
+                Bạn được <strong>@(dong!.TenNVGui ?? "Văn thư")</strong> chuyển văn bản này với vai trò
+                <strong>@dong.TenVaiTro</strong>@(dong.HanXuLy.HasValue ? $", hạn xử lý {dong.HanXuLy:dd/MM/yyyy}" : "").
+                @if (!string.IsNullOrWhiteSpace(dong.NoiDungGui)) { <div class="mt-1"><em>“@dong.NoiDungGui”</em></div> }
+            </div>
+        }
+
+        @if (Model.TatCa.Any())
+        {
+            <div class="tbl-wrap mb-3">
+                <table class="app-table tbl-compact">
+                    <thead>
+                        <tr><th>Người nhận</th><th style="width:110px;">Vai trò</th><th>Người chuyển</th><th style="width:120px;">Trạng thái</th><th>Ý kiến / kết quả</th><th style="width:130px;">Thời gian</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var x in Model.TatCa)
+                    {
+                        <tr>
+                            <td><strong>@x.TenNVNhan</strong></td>
+                            <td>@x.TenVaiTro</td>
+                            <td>@(x.TenNVGui ?? "Văn thư")</td>
+                            <td><span class="badge-status @CssTt(x)">@TenTt(x)</span></td>
+                            <td class="fs-13">@x.YKien</td>
+                            <td class="fs-12 text-muted">
+                                @x.NgayGui.ToString("dd/MM HH:mm")
+                                @if (x.NgayXuLy.HasValue) { <div>→ @x.NgayXuLy.Value.ToString("dd/MM HH:mm")</div> }
+                            </td>
+                        </tr>
+                        @if (x.TrangThai == VanBanXuLy.ChoXuLy && x.NgayXem == null && x.MaNVGui == Model.MaNV)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-end py-1">
+                                    <form method="post" asp-controller="HopThu" asp-action="ThuHoi" class="d-inline">
+                                        <input type="hidden" name="id" value="@x.ID" /><input type="hidden" name="loaiVB" value="@Model.LoaiVB" /><input type="hidden" name="mscv" value="@Model.MSCV.Trim()" />
+                                        <button class="btn btn-xs btn-outline-secondary" onclick="return confirm('Thu hồi văn bản đã chuyển cho @x.TenNVNhan?')"><i class="bi bi-arrow-counterclockwise me-1"></i>Thu hồi (chưa ai mở xem)</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state" style="padding:14px;"><p class="mb-0">Chưa chuyển văn bản này cho cá nhân nào xử lý.</p></div>
+        }
+
+        @if (Model.NhatKy.Any())
+        {
+            <details>
+                <summary class="fs-13 fw-700" style="cursor:pointer;">Nhật ký thao tác (@Model.NhatKy.Count)</summary>
+                <ul class="list-unstyled fs-13 mt-2 mb-0">
+                @foreach (var k in Model.NhatKy)
+                {
+                    <li class="py-1" style="border-bottom:1px dashed var(--border);">
+                        <span class="text-muted">@k.Ngay.ToString("dd/MM/yyyy HH:mm")</span> —
+                        <strong>@k.TenNV</strong> @k.TenHanhDong.ToLower()
+                        @if (!string.IsNullOrEmpty(k.TenNVLienQuan)) { <span>→ <strong>@k.TenNVLienQuan</strong></span> }
+                        @if (!string.IsNullOrWhiteSpace(k.NoiDung)) { <span class="text-muted">: @k.NoiDung</span> }
+                    </li>
+                }
+                </ul>
+            </details>
+        }
+    </div>
+</div>
+
+@* ── Modal chuyển xử lý / chuyển tiếp ── *@
+@if (coTheChuyen)
+{
+    <div class="modal fade" id="@(idModal)_chuyen" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="post" asp-controller="HopThu" asp-action="Chuyen">
+                    <input type="hidden" name="loaiVB" value="@Model.LoaiVB" />
+                    <input type="hidden" name="mscv" value="@Model.MSCV.Trim()" />
+                    <input type="hidden" name="idDong" value="@(dong?.ID)" />
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700"><i class="bi bi-send-fill me-2 text-primary"></i>@(coDong ? "Chuyển tiếp văn bản" : "Chuyển xử lý văn bản")</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="fs-13 text-muted mb-2">
+                            Chọn <strong>1 người xử lý chính</strong> (trực tiếp xử lý), có thể thêm <strong>đồng xử lý</strong> (cho ý kiến) và
+                            <strong>đồng gửi</strong> (chỉ xem để biết). Mỗi người chỉ chọn 1 vai trò.
+                        </p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-5">
+                                <select class="form-select form-select-sm" id="@(idModal)_dv" onchange="xlLoc('@idModal')">
+                                    <option value="">Tất cả đơn vị</option>
+                                    @foreach (var dv in Model.NhanVien.Where(n => n.MaDV > 0).Select(n => new { n.MaDV, n.TenDV }).Distinct().OrderBy(d => d.TenDV))
+                                    {
+                                        <option value="@dv.MaDV">@dv.TenDV</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-7"><input class="form-control form-control-sm" id="@(idModal)_tim" placeholder="Tìm tên người nhận..." oninput="xlLoc('@idModal')" /></div>
+                        </div>
+                        <div id="@(idModal)_ds" style="max-height:290px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+                            <table class="app-table tbl-compact mb-0" style="width:100%;">
+                                <thead><tr><th>Người nhận</th><th style="width:70px;text-align:center;">Chính</th><th style="width:70px;text-align:center;">Đồng XL</th><th style="width:70px;text-align:center;">Xem biết</th></tr></thead>
+                                <tbody>
+                                @foreach (var nv in Model.NhanVien.Where(n => n.MaNV != Model.MaNV))
+                                {
+                                    <tr class="xl-row" data-ten="@nv.HoTen.ToLower()" data-dv="@nv.MaDV">
+                                        <td>@nv.HoTen<div class="fs-12 text-muted">@nv.TenDV</div></td>
+                                        <td style="text-align:center;"><input type="radio" name="nguoiChinh" value="@nv.MaNV" onchange="xlChon(this,'c')" /></td>
+                                        <td style="text-align:center;"><input type="checkbox" name="dongXuLy" value="@nv.MaNV" onchange="xlChon(this,'p')" /></td>
+                                        <td style="text-align:center;"><input type="checkbox" name="xemBiet" value="@nv.MaNV" onchange="xlChon(this,'x')" /></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="fs-12 text-muted mt-1" id="@(idModal)_dem">Chưa chọn ai</div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-8">
+                                <label class="form-label fs-13 mb-1">Ý kiến chỉ đạo / nội dung chuyển</label>
+                                <textarea name="noiDung" class="form-control" rows="2" maxlength="1000"></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fs-13 mb-1">Hạn xử lý</label>
+                                <input type="date" name="hanXuLy" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send-fill me-1"></i>Chuyển</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@foreach (var f in new[] {
+    (Hau: "ykien", Act: "YKien", Tieu: "Cho ý kiến", Nhan: "yKien", Ph: "Nội dung ý kiến của bạn...", Nut: "Gửi ý kiến", Cls: "btn-success"),
+    (Hau: "ketthuc", Act: "KetThuc", Tieu: "Kết thúc xử lý", Nhan: "ketQua", Ph: "Kết quả xử lý...", Nut: "Kết thúc", Cls: "btn-success"),
+    (Hau: "tralai", Act: "TraLai", Tieu: "Trả lại văn bản", Nhan: "lyDo", Ph: "Lý do trả lại (bắt buộc)...", Nut: "Trả lại", Cls: "btn-danger") })
+{
+    if (!coDong) { break; }
+    <div class="modal fade" id="@(idModal)_@f.Hau" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-controller="HopThu" asp-action="@f.Act">
+                    <input type="hidden" name="id" value="@dong!.ID" />
+                    <input type="hidden" name="loaiVB" value="@Model.LoaiVB" />
+                    <input type="hidden" name="mscv" value="@Model.MSCV.Trim()" />
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-700">@f.Tieu</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea name="@f.Nhan" class="form-control" rows="4" maxlength="2000" required placeholder="@f.Ph"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn @f.Cls btn-sm">@f.Nut</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+function xlLoc(id) {
+    var dv = document.getElementById(id + '_dv').value;
+    var tu = (document.getElementById(id + '_tim').value || '').trim().toLowerCase();
+    document.querySelectorAll('#' + id + '_ds .xl-row').forEach(function (r) {
+        var ok = (!dv || r.dataset.dv === dv) && (!tu || r.dataset.ten.indexOf(tu) !== -1);
+        r.style.display = ok ? '' : 'none';
+    });
+}
+// Mỗi người chỉ được 1 vai trò: chọn vai trò này thì bỏ vai trò kia của cùng dòng.
+function xlChon(el, loai) {
+    var row = el.closest('tr');
+    if (el.checked) {
+        if (loai !== 'c') row.querySelector('input[type=radio]').checked = false;
+        if (loai !== 'p') row.querySelector('input[name=dongXuLy]').checked = false;
+        if (loai !== 'x') row.querySelector('input[name=xemBiet]').checked = false;
+    }
+    var modal = el.closest('.modal');
+    var c = modal.querySelectorAll('input[name=nguoiChinh]:checked').length;
+    var p = modal.querySelectorAll('input[name=dongXuLy]:checked').length;
+    var x = modal.querySelectorAll('input[name=xemBiet]:checked').length;
+    modal.querySelector('[id$=_dem]').textContent = (c + p + x) === 0 ? 'Chưa chọn ai' :
+        'Đã chọn: ' + c + ' xử lý chính, ' + p + ' đồng xử lý, ' + x + ' xem để biết';
+}
+</script>
+}

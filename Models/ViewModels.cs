@@ -259,3 +259,27 @@ public class ThongBaoNoiBoFormViewModel
     public List<byte> DanhSachQuyenNhan { get; set; } = new();
 }
 
+
+public class HopThuViewModel
+{
+    public string Tab { get; set; } = "cho";
+    public string? TuKhoa { get; set; }
+    public byte? Loai { get; set; }
+    public List<VanBanXuLy> DanhSach { get; set; } = new();
+    public int DemCho { get; set; }
+    public int DemXemBiet { get; set; }
+    public PageInfo Trang { get; set; } = new();
+}
+
+// Dữ liệu panel "Xử lý của tôi" nhúng trong trang chi tiết văn bản.
+public class XuLyPanelViewModel
+{
+    public byte LoaiVB { get; set; }
+    public string MSCV { get; set; } = "";
+    public short MaNV { get; set; }
+    public VanBanXuLy? DongCuaToi { get; set; }
+    public List<VanBanXuLy> TatCa { get; set; } = new();
+    public List<VanBanNhatKy> NhatKy { get; set; } = new();
+    public bool CoTheChuyenGoc { get; set; }
+    public List<NhanVien> NhanVien { get; set; } = new();
+}

@@ -22,6 +22,18 @@
 
 <form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
     <input asp-for="CongVanDi.MSCV" type="hidden" />
+    @if (ViewBag.DuThaoId is int duThaoId)
+    {
+        <input type="hidden" name="duThaoId" value="@duThaoId" />
+        <div class="alert alert-info py-2 fs-13">
+            <i class="bi bi-file-earmark-check me-1"></i>Đang <strong>ban hành dự thảo #@duThaoId</strong> — thông tin đã điền sẵn từ dự thảo được duyệt.
+            Chọn sổ văn bản, kiểm tra số ký hiệu, rồi lưu để vào sổ.
+            @if (ViewBag.DuThaoFiles is List<CongVan.Models.DuThaoFile> dtFiles && dtFiles.Any())
+            {
+                <div class="mt-1">File dự thảo sẽ được dùng làm file đính kèm (nếu bạn không tải file mới): <strong>@dtFiles.First().TenFile</strong></div>
+            }
+        </div>
+    }
 
     <div class="form-section">
         <div class="form-section-header">

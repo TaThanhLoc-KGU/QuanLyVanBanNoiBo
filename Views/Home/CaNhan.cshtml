@@ -1,0 +1,113 @@
+@using CongVan.Models
+@{
+    ViewData["Title"] = "Tổng quan";
+    string hoTen = ViewBag.HoTen ?? "";
+    int cho = ViewBag.DemCho ?? 0, xb = ViewBag.DemXemBiet ?? 0;
+    var hopThu = ViewBag.HopThuMoi as List<VanBanXuLy> ?? new();
+    var duThao = ViewBag.DuThao as List<DuThao> ?? new();
+    var dungChung = ViewBag.DungChung as List<CongVanDen> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1>Xin chào, @(hoTen.Split(' ').Last())</h1>
+        <p class="page-header-sub">@(cho > 0 ? $"Bạn có {cho} văn bản đang chờ xử lý." : "Bạn không có văn bản nào chờ xử lý.")</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-controller="DuThao" asp-action="Nhap" class="btn btn-primary btn-sm"><i class="bi bi-pencil-square me-1"></i>Soạn văn bản đi</a>
+    </div>
+</div>
+
+<div class="stat-cards">
+    <a class="stat-card" asp-controller="HopThu" asp-action="Index" asp-route-tab="cho">
+        <div class="stat-icon si-amber"><i class="bi bi-hourglass-split"></i></div>
+        <div><div class="stat-label">Chờ tôi xử lý</div><div class="stat-value">@cho</div><div class="stat-sub">văn bản</div></div>
+    </a>
+    <a class="stat-card" asp-controller="HopThu" asp-action="Index" asp-route-tab="xembiet">
+        <div class="stat-icon si-blue"><i class="bi bi-eye"></i></div>
+        <div><div class="stat-label">Xem để biết</div><div class="stat-value">@xb</div><div class="stat-sub">chưa xem</div></div>
+    </a>
+    <a class="stat-card" asp-controller="DuThao" asp-action="Index">
+        <div class="stat-icon si-green"><i class="bi bi-pencil-square"></i></div>
+        <div><div class="stat-label">Văn bản đi của tôi</div><div class="stat-value">@duThao.Count</div><div class="stat-sub">chưa ban hành</div></div>
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="bi bi-inbox-fill me-1 text-primary"></i>Văn bản chờ tôi xử lý</span>
+                <div class="card-tools"><a class="btn btn-xs btn-outline-secondary" asp-controller="HopThu" asp-action="Index">Xem tất cả</a></div>
+            </div>
+            @if (!hopThu.Any())
+            {
+                <div class="empty-state" style="padding:28px;"><i class="bi bi-check2-circle"></i><p>Không có văn bản nào đang chờ</p></div>
+            }
+            else
+            {
+                <div class="tbl-wrap" style="border:none;border-radius:0;">
+                    <table class="app-table tbl-clickable">
+                        <tbody>
+                        @foreach (var x in hopThu)
+                        {
+                            <tr onclick="location.href='@(x.LoaiVB == 2 ? Url.Action("ChiTiet", "DuThao", new { id = x.MSCV.Trim() }) : Url.Action("ChiTiet", "CongVanDen", new { id = x.MSCV.Trim() }))'" style="@(x.NgayXem == null ? "font-weight:700;" : "")">
+                                <td>@x.TrichYeu<div class="fs-12 text-muted" style="font-weight:400;">@(x.TenNVGui ?? "Văn thư") · @x.NgayGui.ToString("dd/MM HH:mm")</div></td>
+                                <td style="width:110px;"><span class="badge-status @(x.VaiTro == 1 ? "done" : "processing")">@x.TenVaiTro</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header">
+                <span class="card-title"><i class="bi bi-pencil-square me-1 text-primary"></i>Văn bản đi đang soạn</span>
+                <div class="card-tools"><a class="btn btn-xs btn-outline-secondary" asp-controller="DuThao" asp-action="Index">Xem tất cả</a></div>
+            </div>
+            @if (!duThao.Any())
+            {
+                <div class="empty-state" style="padding:22px;"><p>Bạn chưa soạn văn bản đi nào</p></div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                @foreach (var d in duThao)
+                {
+                    <a asp-controller="DuThao" asp-action="ChiTiet" asp-route-id="@d.ID" class="d-flex justify-content-between gap-2 px-3 py-2" style="text-decoration:none;border-bottom:1px solid var(--border);color:var(--text);">
+                        <span class="fs-13">@d.TrichYeu</span>
+                        <span class="badge-status @(d.TrangThai == 1 ? "processing" : "new")" style="align-self:flex-start;">@d.TenTrangThai</span>
+                    </a>
+                }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="bi bi-people-fill me-1 text-primary"></i>Văn bản dùng chung mới</span>
+                <div class="card-tools"><a class="btn btn-xs btn-outline-secondary" asp-controller="CongVanDen" asp-action="Index">Xem tất cả</a></div>
+            </div>
+            @if (!dungChung.Any())
+            {
+                <div class="empty-state" style="padding:22px;"><p>Chưa có văn bản dùng chung</p></div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                @foreach (var cv in dungChung)
+                {
+                    <a asp-controller="CongVanDen" asp-action="ChiTiet" asp-route-id="@cv.MSCV?.Trim()" class="d-block px-3 py-2" style="text-decoration:none;border-bottom:1px solid var(--border);color:var(--text);">
+                        <div class="fs-13">@cv.TrichYeu</div>
+                        <div class="fs-12 text-muted">@cv.TenLVB · @cv.NgayBanHanh.ToString("dd/MM/yyyy")</div>
+                    </a>
+                }
+                </div>
+            }
+        </div>
+    </div>
+</div>

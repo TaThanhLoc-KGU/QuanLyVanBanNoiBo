@@ -61,7 +61,7 @@ public class DonViController : BaseController
     [HttpGet]
     public async Task<IActionResult> PhanQuyenNoiBo()
     {
-        if (!XemDuocTinhNangMoi) return StatusCode(404);
+        if (!XemDuocTinhNangMoi) return TuChoi("Chức năng này chưa được mở cho bạn.");
         bool laAdmin = CoQuyen("Admin.LanhDaoPhong");
         if (!laAdmin && !await LaLanhDaoDonViAsync(MaDV)) return Forbid();
 
@@ -141,6 +141,7 @@ public class DonViController : BaseController
         if (maDV.HasValue)
         {
             danhSach = await _db.GetCVDenTheoDonViAsync(maDV.Value, nam, tuKhoa);
+            if (LaVienChucThuong) danhSach = danhSach.Where(x => x.DungChung).ToList(); // viên chức: chỉ văn bản dùng chung
             danhSachDi = await _db.GetCVDiTheoDonViAsync(maDV.Value, nam, tuKhoa);
             ViewBag.TenDV = donVi.FirstOrDefault(d => d.MaDV == maDV)?.TenDV;
         }

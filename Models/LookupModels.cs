@@ -13,6 +13,7 @@ public class LoaiVB
     public string? TenLVB { get; set; }
     public string? KyHieu { get; set; }
     public bool HienThi { get; set; } = true;
+    public bool DungChung { get; set; } // Văn bản đến loại này mặc định là "dùng chung" nội bộ (migration 037)
 }
 
 public class LoaiVBCVDi

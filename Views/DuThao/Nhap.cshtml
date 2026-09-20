@@ -1,0 +1,261 @@
+@model CongVan.Models.DuThaoFormViewModel
+@{
+    var d = Model.DuThao;
+    bool moi = d.ID == 0;
+    ViewData["Title"] = "Soạn văn bản đi";
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-send-fill me-2"></i>@(moi ? "Soạn văn bản đi" : "Sửa văn bản đi") @if (!moi) { <span class="mono" style="font-size:16px;color:var(--muted);">#@d.ID</span> }</h1>
+        <p class="page-header-sub">Đơn vị soạn thảo: <strong>@Model.TenDVSoan</strong>. Lưu nháp để soạn tiếp sau, hoặc gửi lãnh đạo đơn vị duyệt ngay.</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="@(moi ? "Index" : "ChiTiet")" asp-route-id="@(moi ? null : d.ID)" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+    </div>
+</div>
+
+<form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off" id="frmDuThao">
+    <input asp-for="DuThao.ID" type="hidden" />
+    <input asp-for="DuThao.MSCVDen" type="hidden" />
+    <input type="hidden" name="hanhDong" id="hanhDong" value="luu" />
+
+    @if (!string.IsNullOrEmpty(d.MSCVDen))
+    {
+        <div class="alert alert-info py-2 fs-13"><i class="bi bi-reply-fill me-1"></i>Văn bản này soạn để <strong>trả lời văn bản đến</strong> số <span class="mono">@d.MSCVDen</span>.</div>
+    }
+
+    <div class="form-section" data-hint="Văn bản này ban hành ở cấp nào? Quyết định ai duyệt và ai ban hành.">
+        <div class="form-section-header"><span class="step-num">1</span>Phạm vi ban hành</div>
+        <div class="form-section-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="opt-card" for="pv1">
+                        <input class="form-check-input" type="radio" name="DuThao.PhamVi" id="pv1" value="1" @(d.PhamVi != 2 ? "checked" : "") onchange="dtDoiPhamVi()" />
+                        <div>
+                            <div class="opt-title"><i class="bi bi-building me-1 text-primary"></i>Cấp trường</div>
+                            <div class="opt-desc">Văn bản ra ngoài trường hoặc gửi các đơn vị. Trình duyệt/ký qua nhiều cấp, <b>văn thư trường (cấp 1)</b> ban hành và cấp số.</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="col-md-6">
+                    <label class="opt-card" for="pv2">
+                        <input class="form-check-input" type="radio" name="DuThao.PhamVi" id="pv2" value="2" @(d.PhamVi == 2 ? "checked" : "") onchange="dtDoiPhamVi()" />
+                        <div>
+                            <div class="opt-title"><i class="bi bi-people me-1 text-primary"></i>Nội bộ đơn vị</div>
+                            <div class="opt-desc">Chỉ trong @Model.TenDVSoan. Lãnh đạo đơn vị duyệt, <b>văn thư đơn vị (cấp 2)</b> ban hành vào sổ văn bản nội bộ của đơn vị.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section" data-hint="Nội dung chính của văn bản sẽ ban hành.">
+        <div class="form-section-header"><span class="step-num">2</span>Nội dung</div>
+        <div class="form-section-body">
+            <div class="row">
+                <div class="col-12">
+                    <label class="form-label">Trích yếu <span class="form-required">*</span></label>
+                    <textarea asp-for="DuThao.TrichYeu" class="form-control" rows="2" maxlength="500" placeholder="Ví dụ: V/v tổ chức hội nghị tập huấn công tác..."></textarea>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Loại văn bản <span class="form-required">*</span></label>
+                    <select asp-for="DuThao.MaLVB" class="form-select ts-select">
+                        <option value="">Chọn loại...</option>
+                        @foreach (var lv in Model.DanhSachLoaiVB) { <option value="@lv.MaLVB">@lv.TenLVB</option> }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Độ khẩn</label>
+                    <select asp-for="DuThao.DoKhan" class="form-select">
+                        <option value="0">Thường</option><option value="1">Khẩn</option><option value="2">Hỏa tốc</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Lĩnh vực</label>
+                    <select asp-for="DuThao.MaNCV" class="form-select ts-select">
+                        <option value="">Không chọn</option>
+                        @foreach (var nc in Model.DanhSachNhomCV) { <option value="@nc.MaNCV">@nc.TenNCV</option> }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Hình thức</label>
+                    <select asp-for="DuThao.HinhThuc" class="form-select">
+                        <option value="1">Văn bản mới</option><option value="2">Thay thế văn bản cũ</option><option value="3">Bổ sung văn bản cũ</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Người ký dự kiến</label>
+                    <select asp-for="DuThao.MaNVKy" class="form-select ts-select">
+                        <option value="">Chưa chọn</option>
+                        @foreach (var nv in Model.DanhSachNguoiKy) { <option value="@nv.MaNV">@nv.HoTen</option> }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Hạn xử lý</label>
+                    <input asp-for="DuThao.HanXuLy" type="date" class="form-control" value="@d.HanXuLy?.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section" data-hint="Bản dự thảo (Word/PDF). Chọn được nhiều file, tối đa 100 MB mỗi file.">
+        <div class="form-section-header"><span class="step-num">3</span>File dự thảo</div>
+        <div class="form-section-body">
+            <div class="drop-zone" onclick="document.getElementById('inpFiles').click()"
+                 ondragover="event.preventDefault(); this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')"
+                 ondrop="event.preventDefault(); this.classList.remove('drag-over'); document.getElementById('inpFiles').files = event.dataTransfer.files; dtHienFile();">
+                <i class="bi bi-cloud-upload-fill"></i>
+                <p><strong>Kéo thả file</strong> vào đây hoặc <span style="color:var(--primary);text-decoration:underline;">bấm để chọn</span></p>
+            </div>
+            <input type="file" id="inpFiles" name="files" multiple class="d-none" onchange="dtHienFile()" />
+            <ul id="dtFileMoi" class="list-unstyled fs-13 mt-2 mb-0"></ul>
+            @if (Model.Files.Any())
+            {
+                <div class="fs-13 fw-700 mt-3 mb-1">File đã lưu</div>
+                <ul class="list-unstyled mb-0 fs-13">
+                @foreach (var f in Model.Files)
+                {
+                    <li class="d-flex align-items-center gap-2 py-1">
+                        <i class="bi bi-paperclip"></i>
+                        <a asp-action="TaiFile" asp-route-fileId="@f.ID">@f.TenFile</a>
+                        <button type="submit" formaction="@Url.Action("XoaFile", new { fileId = f.ID })" formnovalidate class="btn btn-xs btn-outline-danger ms-auto" onclick="return confirm('Xóa file này?')"><i class="bi bi-trash"></i></button>
+                    </li>
+                }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <div class="form-section" data-hint="Đơn vị trong trường nhận như văn bản đến; nơi nhận ngoài trường ghi tự do. Có thể bổ sung sau.">
+        <div class="form-section-header"><span class="step-num">4</span>Nơi nhận</div>
+        <div class="form-section-body">
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                        <label class="form-label mb-0">Đơn vị trong trường — <span id="dvDem" class="text-primary fw-700">0</span> đã chọn</label>
+                        <input id="dvTim" class="form-control form-control-sm" style="max-width:200px;" placeholder="Tìm đơn vị..." oninput="dvLoc()" />
+                    </div>
+                    <div id="dvDs" style="max-height:260px;overflow-y:auto;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#F8FAFC;">
+                        @foreach (var dv in Model.DanhSachDonVi)
+                        {
+                            <div class="form-check dv-item" data-ten="@dv.TenDV.ToLower()">
+                                <input class="form-check-input dv-cb" type="checkbox" name="dvNhan" value="@dv.MaDV" id="dv_@dv.MaDV" onchange="dvDem()" @(Model.DVNhan.Contains(dv.MaDV) ? "checked" : "") />
+                                <label class="form-check-label fs-13" for="dv_@dv.MaDV">@dv.TenDV</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <label class="form-label">Nơi nhận ngoài trường</label>
+                    <textarea asp-for="DuThao.NoiNhanKhac" class="form-control" rows="8" maxlength="500" placeholder="Ví dụ: Sở Giáo dục và Đào tạo; UBND tỉnh Kiên Giang..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section" data-hint="Ai duyệt/ký, theo thứ tự nào. Sau cùng văn thư ban hành.">
+        <div class="form-section-header"><span class="step-num">5</span>Gửi duyệt</div>
+        <div class="form-section-body">
+            <div class="row">
+                <div class="col-12" id="boChuoiDuyet">
+                    <label class="form-label">Chuỗi duyệt / ký <span class="text-muted fs-12">— chọn theo thứ tự, kéo để đổi thứ tự</span></label>
+                    <select id="selChuoi" multiple placeholder="Chọn người duyệt/ký...">
+                        @foreach (var nv in Model.DanhSachNguoiDuyet)
+                        {
+                            <option value="@nv.MaNV" selected="@(Model.ChuoiDuyet.Contains(nv.MaNV))">@nv.HoTen — @nv.TenDV</option>
+                        }
+                    </select>
+                    <input type="hidden" name="chuoiDuyetCsv" id="chuoiDuyetCsv" value="@string.Join(",", Model.ChuoiDuyet)" />
+                    <div class="form-hint">Gợi ý sẵn lãnh đạo đơn vị. Thêm lãnh đạo trường nếu cần ký cấp trên; xong chuỗi, văn bản chuyển <b>văn thư trường</b> ban hành.</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Ghi chú cho người duyệt</label>
+                    <textarea asp-for="DuThao.NoiDungXuLy" class="form-control" rows="3" maxlength="2000" placeholder="Ví dụ: Nhờ anh/chị xem giúp mục 3, đã cập nhật theo góp ý hôm trước..."></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="flow-line" id="dtFlow"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary btn-lg" id="btnTrinh" onclick="document.getElementById('hanhDong').value='trinh'"><i class="bi bi-send-fill me-1"></i>Lưu &amp; trình duyệt</button>
+        @if (Model.LaVanThuCap1 || Model.LaVanThuCap2)
+        {
+            <button type="submit" class="btn btn-success btn-lg" id="btnBanHanh" style="display:none;" onclick="document.getElementById('hanhDong').value='banhanh'"><i class="bi bi-journal-check me-1"></i>Lưu &amp; ban hành ngay</button>
+        }
+        <button type="submit" class="btn btn-outline-secondary btn-lg" onclick="document.getElementById('hanhDong').value='luu'"><i class="bi bi-floppy me-1"></i>Lưu nháp</button>
+    </div>
+</form>
+
+<style>
+    .flow-line { display: flex; align-items: stretch; flex-wrap: wrap; }
+    .flow-node { flex: 1 1 150px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+    .flow-node i { color: var(--muted); font-size: 17px; }
+    .flow-node span { font-size: 12px; color: var(--muted); }
+    .flow-node.on { border-color: var(--primary); background: var(--primary-50); }
+    .flow-node.on i { color: var(--primary); }
+    .flow-arrow { flex: 0 0 28px; align-self: center; height: 2px; background: var(--border-2); position: relative; }
+    .flow-arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 7px solid var(--border-2); }
+    @@media (max-width: 700px) { .flow-arrow { display: none; } .flow-node { margin-bottom: 8px; } }
+</style>
+<script>
+function dvLoc() {
+    var tu = (document.getElementById('dvTim').value || '').trim().toLowerCase();
+    document.querySelectorAll('#dvDs .dv-item').forEach(function (e) { e.style.display = (!tu || e.dataset.ten.indexOf(tu) !== -1) ? '' : 'none'; });
+}
+function dvDem() { document.getElementById('dvDem').textContent = document.querySelectorAll('.dv-cb:checked').length; }
+function dtHienFile() {
+    var ul = document.getElementById('dtFileMoi'); ul.innerHTML = '';
+    Array.prototype.forEach.call(document.getElementById('inpFiles').files, function (f) {
+        var li = document.createElement('li'); li.className = 'py-1';
+        li.innerHTML = '<i class="bi bi-file-earmark-plus text-success me-1"></i>'; li.appendChild(document.createTextNode(f.name + ' (' + Math.round(f.size / 1024) + ' KB)'));
+        ul.appendChild(li);
+    });
+}
+document.addEventListener('DOMContentLoaded', dvDem);
+
+var dtLaVT1 = @(Model.LaVanThuCap1 ? "true" : "false"), dtLaVT2 = @(Model.LaVanThuCap2 ? "true" : "false");
+var dtTs = null;
+function dtPhamVi() { var r = document.querySelector('input[name="DuThao.PhamVi"]:checked'); return r ? r.value : '1'; }
+function dtDoiPhamVi() {
+    var pv = dtPhamVi();
+    var bo = document.getElementById('boChuoiDuyet'); if (bo) bo.style.display = pv === '2' ? 'none' : '';
+    var bh = document.getElementById('btnBanHanh');
+    if (bh) bh.style.display = ((pv === '1' && dtLaVT1) || (pv === '2' && dtLaVT2)) ? '' : 'none';
+    var tr = document.getElementById('btnTrinh');
+    if (tr) { var banhanh = (pv === '1' && dtLaVT1) || (pv === '2' && dtLaVT2); tr.className = banhanh ? 'btn btn-outline-primary btn-lg' : 'btn btn-primary btn-lg'; }
+    dtVeLuong();
+}
+function dtChuoi() { return dtTs ? dtTs.items.slice() : []; }
+function dtVeLuong() {
+    var pv = dtPhamVi(), box = document.getElementById('dtFlow'); if (!box) return;
+    var nodes = [{ ic: 'pencil', t: 'Người soạn', s: 'Bạn soạn và trình', on: true }];
+    if (pv === '2') nodes.push({ ic: 'person-check', t: 'Lãnh đạo đơn vị', s: 'Duyệt hoặc trả lại' }, { ic: 'journal-check', t: 'Văn thư đơn vị (cấp 2)', s: 'Ban hành nội bộ đơn vị' });
+    else {
+        var ch = dtChuoi();
+        if (ch.length === 0) nodes.push({ ic: 'person-check', t: 'Chưa chọn người duyệt', s: 'Chuyển thẳng văn thư trường' });
+        ch.forEach(function (id, i) { var o = dtTs.options[id]; nodes.push({ ic: 'person-check', t: 'Duyệt/ký cấp ' + (i + 1), s: o ? String(o.text).split(' — ')[0] : '' }); });
+        nodes.push({ ic: 'journal-check', t: 'Văn thư trường (cấp 1)', s: 'Ban hành, cấp số ký hiệu' });
+    }
+    box.innerHTML = '';
+    nodes.forEach(function (n, i) {
+        if (i > 0) { var a = document.createElement('div'); a.className = 'flow-arrow'; box.appendChild(a); }
+        var d = document.createElement('div'); d.className = 'flow-node' + (n.on ? ' on' : '');
+        d.innerHTML = '<i class="bi bi-' + n.ic + '"></i><b></b><span></span>';
+        d.querySelector('b').textContent = n.t; d.querySelector('span').textContent = n.s; box.appendChild(d);
+    });
+}
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('selChuoi');
+    if (el && window.TomSelect) {
+        dtTs = new TomSelect(el, { plugins: ['remove_button', 'drag_drop'], maxOptions: 200,
+            onChange: function () { document.getElementById('chuoiDuyetCsv').value = dtChuoi().join(','); dtVeLuong(); } });
+        document.getElementById('chuoiDuyetCsv').value = dtChuoi().join(',');
+    }
+    dtDoiPhamVi();
+});
+</script>

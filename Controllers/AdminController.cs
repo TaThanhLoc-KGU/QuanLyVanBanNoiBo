@@ -34,6 +34,57 @@ public class AdminController : BaseController
         return View();
     }
 
+    // Xuất danh sách tài khoản theo CẤP: Lãnh đạo trường, Lãnh đạo đơn vị, Văn thư cấp 1, Văn thư cấp 2, Chuyên viên.
+    // Mỗi cấp 1 sheet (1 người giữ nhiều vai trò xuất hiện ở nhiều sheet), thêm sheet "Tất cả" (mỗi người 1 dòng, cấp cao nhất).
+    // Mật khẩu KHÔNG xuất (lưu dạng băm 1 chiều, không khôi phục được).
+    [HttpGet]
+    public async Task<IActionResult> XuatTaiKhoanExcel(bool baoGomNghiViec = false)
+    {
+        if (!CoQuyen("Admin.NhanVien")) return Forbid();
+        var ds = await _db.GetTaiKhoanTheoCapAsync(baoGomNghiViec);
+
+        using var wb = new ClosedXML.Excel.XLWorkbook();
+        string[] tieuDe = { "STT", "Họ và tên", "Tên đăng nhập", "Email", "Đơn vị", "Cấp cao nhất", "Các vai trò", "Trạng thái" };
+
+        void VeSheet(string ten, IEnumerable<TaiKhoanCap> rows)
+        {
+            var ws = wb.Worksheets.Add(ten);
+            for (int i = 0; i < tieuDe.Length; i++) ws.Cell(1, i + 1).Value = tieuDe[i];
+            var hdr = ws.Row(1);
+            hdr.Style.Font.Bold = true;
+            hdr.Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+            hdr.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#1B6580");
+            int r = 2, stt = 1;
+            foreach (var t in rows)
+            {
+                ws.Cell(r, 1).Value = stt++;
+                ws.Cell(r, 2).Value = t.HoTen;
+                ws.Cell(r, 3).Value = t.Username ?? "";
+                ws.Cell(r, 4).Value = t.Email ?? "";
+                ws.Cell(r, 5).Value = t.TenDV ?? "";
+                ws.Cell(r, 6).Value = t.CapCaoNhat;
+                ws.Cell(r, 7).Value = t.CacVaiTro;
+                ws.Cell(r, 8).Value = t.NgayNghiViec.HasValue ? $"Đã nghỉ việc ({t.NgayNghiViec:dd/MM/yyyy})" : "Đang làm việc";
+                r++;
+            }
+            ws.SheetView.FreezeRows(1);
+            ws.Columns().AdjustToContents();
+            ws.Column(2).Width = Math.Max(ws.Column(2).Width, 24);
+        }
+
+        VeSheet("Tất cả", ds);
+        VeSheet("Lãnh đạo trường", ds.Where(t => t.LdTruong));
+        VeSheet("Lãnh đạo đơn vị", ds.Where(t => t.LdDonVi));
+        VeSheet("Văn thư cấp 1", ds.Where(t => t.VtCap1));
+        VeSheet("Văn thư cấp 2", ds.Where(t => t.VtCap2));
+        VeSheet("Chuyên viên", ds.Where(t => t.ChuyenVien));
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"TaiKhoan_TheoCap_{DateTime.Today:yyyyMMdd}.xlsx");
+    }
+
     [HttpGet]
     public async Task<IActionResult> NhanVien()
     {
@@ -361,6 +412,15 @@ public class AdminController : BaseController
     {
         if (!CoQuyen("Admin.LoaiVanBan")) return Forbid();
         await _db.SetHienThiLoaiVBAsync(maLVB, hienThi);
+        return Json(new { ok = true });
+    }
+
+    // Loại văn bản mặc định "dùng chung nội bộ" (văn thư nhập văn bản đến loại này thì tự tick dùng chung).
+    [HttpPost]
+    public async Task<IActionResult> SetDungChungLoaiVB(short maLVB, bool dungChung)
+    {
+        if (!CoQuyen("Admin.LoaiVanBan")) return Forbid();
+        await _db.SetLoaiVBDungChungAsync(maLVB, dungChung);
         return Json(new { ok = true });
     }
 

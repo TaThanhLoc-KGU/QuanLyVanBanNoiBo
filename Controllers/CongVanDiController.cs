@@ -24,7 +24,8 @@ public class CongVanDiController : BaseController
         var vm = new CongVanDiFilterViewModel
         {
             Nam = nam, MaSCV = maSCV, TuKhoa = tuKhoa, ChiCongKhai = chiCongKhai,
-            DanhSach = await _db.GetCongVanDiAsync(nam, maSCV, tuKhoa, chiCongKhai),
+            // Viên chức thường chỉ xem văn bản đi đã gắn dấu công khai (văn bản đi của họ nằm ở "Dự thảo văn bản đi").
+            DanhSach = await _db.GetCongVanDiAsync(nam, maSCV, tuKhoa, chiCongKhai || LaVienChucThuong),
             DanhSachSoCV = await _db.GetSoCVAsync(),
             DanhSachDonVi = await _db.GetDonViAsync(chiLayConHoatDong: false)
         };
@@ -32,7 +33,7 @@ public class CongVanDiController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Nhap(string? id)
+    public async Task<IActionResult> Nhap(string? id, int? duThao)
     {
         if (!CoQuyen("CongVanDi.Nhap") && !LaVanThuDonVi) return Forbid();
         var vm = new CongVanDiFormViewModel
@@ -44,6 +45,26 @@ public class CongVanDiController : BaseController
             DanhSachLanhDao = await _db.GetLanhDaoAsync(),
             DanhSachDonVi = await _db.GetDonViAsync()
         };
+        // Ban hành từ DỰ THẢO đã duyệt: điền sẵn thông tin để văn thư chỉ việc chọn sổ, cấp số và lưu.
+        if (duThao.HasValue && string.IsNullOrEmpty(id))
+        {
+            var dt = await _db.GetDuThaoAsync(duThao.Value);
+            if (dt == null || dt.TrangThai == DuThao.DaBanHanh || dt.PhamVi == 2) return NotFound(); // PhamVi=2 (nội bộ đơn vị) ban hành ở Văn bản nội bộ
+            var dongGiu = await _db.GetDongDangChoAsync(VanBanXuLy.LoaiDuThao, dt.ID.ToString(), MaNV);
+            if (dongGiu == null && !CoQuyen("CongVanDi.Nhap")) return Forbid();
+            var cvNhap = vm.CongVanDi;
+            cvNhap.TrichYeu = dt.TrichYeu;
+            cvNhap.MaLVB = dt.MaLVB ?? 0;
+            cvNhap.MaNCV = dt.MaNCV ?? 0;
+            cvNhap.MaLDKy = dt.MaNVKy ?? 0;
+            cvNhap.NguoiSoanThao = dt.TenNVSoan;
+            cvNhap.DonViSoanThao = dt.TenDVSoan;
+            cvNhap.DonViNhan = dt.DonViNhan;
+            cvNhap.NoiNhanCV = dt.NoiNhanKhac;
+            cvNhap.MSCVDen = dt.MSCVDen;
+            ViewBag.DuThaoId = dt.ID;
+            ViewBag.DuThaoFiles = await _db.GetFileDuThaoAsync(dt.ID);
+        }
         if (!string.IsNullOrEmpty(vm.CongVanDi.DonViNhan))
             vm.DanhSachDVNhan = vm.CongVanDi.DonViNhan.Split(',')
                 .Where(x => byte.TryParse(x.Trim(), out _))
@@ -62,6 +83,7 @@ public class CongVanDiController : BaseController
     {
         var cv = await _db.GetCongVanDiByIdAsync(id);
         if (cv == null) return NotFound();
+        if (LaVienChucThuong && !cv.CongKhai && !await _db.DuThaoCuaNguoiNayAsync(id.Trim(), MaNV)) return Forbid();
         ViewBag.DonVi = await _db.GetDonViAsync(chiLayConHoatDong: false);
         ViewBag.TrinhKyDangHoatDong = await _db.GetTrinhKyDangHoatDongAsync(2, id);
         ViewBag.NhanVien = await _db.GetNguoiDuyetTrinhKyAsync(MaDV, MaNV);
@@ -70,7 +92,7 @@ public class CongVanDiController : BaseController
     }
 
     [HttpPost]
-    public async Task<IActionResult> Nhap(CongVanDiFormViewModel vm, IFormFile? fileDinhKem, List<byte> dvNhan, bool cungLaVanBanDieuHanh, bool congKhai = false)
+    public async Task<IActionResult> Nhap(CongVanDiFormViewModel vm, IFormFile? fileDinhKem, List<byte> dvNhan, bool cungLaVanBanDieuHanh, bool congKhai = false, int? duThaoId = null)
     {
         if (!CoQuyen("CongVanDi.Nhap") && !LaVanThuDonVi) return Forbid();
         var cv = vm.CongVanDi;
@@ -93,6 +115,8 @@ public class CongVanDiController : BaseController
         bool coFileMoi = fileDinhKem != null && fileDinhKem.Length > 0;
         if (coFileMoi)
             cv.FileDinhKem = await SaveFileAsync(fileDinhKem);
+        else if (duThaoId.HasValue && string.IsNullOrEmpty(cv.MSCV))
+            cv.FileDinhKem = (await _db.GetFileDuThaoAsync(duThaoId.Value)).FirstOrDefault()?.DuongDan; // dùng file của dự thảo
 
         bool isNew = string.IsNullOrEmpty(cv.MSCV);
         if (isNew)
@@ -101,6 +125,7 @@ public class CongVanDiController : BaseController
             await _db.SuaCongVanDiAsync(cv);
 
         var cvFull = await _db.GetCongVanDiByIdAsync(cv.MSCV) ?? cv;
+        if (duThaoId.HasValue && isNew) await _db.DanhDauDuThaoDaBanHanhAsync(duThaoId.Value, cv.MSCV!.Trim(), MaNV);
 
         // Văn bản đi gửi cho đơn vị nội bộ = văn bản đến của đơn vị đó (trừ văn bản đến
         // thật từ cơ quan ngoài trường, do văn thư nhập riêng) — tự tạo văn bản đến cho từng

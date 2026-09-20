@@ -94,6 +94,11 @@
         <div class="empty-state">
             <i class="bi bi-inbox"></i>
             <p>Không có văn bản nào @(Model.TuKhoa != null || Model.MaSCV != null ? "phù hợp với điều kiện lọc" : $"trong năm {Model.Nam}")</p>
+            @if (ViewBag.XemDuocTinhNangMoi as bool? ?? false)
+            {
+                <p class="fs-13 mt-2">Sổ này chỉ hiện văn bản <strong>dùng chung nội bộ</strong> và văn bản được chuyển cho bạn.
+                    Văn bản chờ bạn xử lý nằm ở <a asp-controller="HopThu" asp-action="Index">Văn bản của tôi</a>.</p>
+            }
         </div>
     </div>
 }

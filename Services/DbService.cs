@@ -4,7 +4,7 @@ using CongVan.Models;
 
 namespace CongVan.Services;
 
-public class DbService
+public partial class DbService
 {
     private readonly string _conn;
 
@@ -568,7 +568,8 @@ public class DbService
 
     public async Task<(List<CongVanDen> Items, int Total)> GetCongVanDenPagedAsync(
         int? nam, byte? maSCV, string? tuKhoa, byte? filterMaDV, short? maNVHienTai,
-        byte? maDVXL, string? nguoiKy, DateTime? tuNgay, DateTime? denNgay, int page, int pageSize)
+        byte? maDVXL, string? nguoiKy, DateTime? tuNgay, DateTime? denNgay, int page, int pageSize,
+        bool chiCaNhanVaDungChung = false)
     {
         var where = "WHERE 1=1";
         var p = new Dapper.DynamicParameters();
@@ -583,9 +584,17 @@ public class DbService
                         OR EXISTS(SELECT 1 FROM CVDenFile f WHERE f.MSCV=cvd.MSCV AND f.NoiDungTrichXuat LIKE @tk))";
             p.Add("tk", $"%{tuKhoa}%");
         }
-        if (filterMaDV.HasValue)
+        if (chiCaNhanVaDungChung)
         {
-            where += " AND (cvd.MaDVXL=@filterMaDV OR (',' + ISNULL(cvd.BoPhanPhoiHop,'') + ',') LIKE '%,' + CAST(@filterMaDV AS varchar) + ',%')";
+            // Viên chức thường: chỉ văn bản dùng chung, hoặc đã chuyển/giao cho chính mình.
+            where += @" AND (cvd.DungChung=1
+                        OR EXISTS(SELECT 1 FROM VanBan_XuLy x WHERE x.LoaiVB=1 AND x.MSCV=cvd.MSCV AND x.MaNVNhan=@maNVHienTai AND x.TrangThai<>5)
+                        OR EXISTS(SELECT 1 FROM CongViec cv2 WHERE cv2.LoaiNguonGoc=1 AND cv2.MSCVGoc=cvd.MSCV
+                                  AND (cv2.MaNVChuTri=@maNVHienTai OR (',' + ISNULL(cv2.NguoiPhoiHop,'') + ',') LIKE '%,' + CAST(@maNVHienTai AS varchar) + ',%')))";
+        }
+        else if (filterMaDV.HasValue)
+        {
+            where += " AND (cvd.MaDVXL=@filterMaDV OR (',' + ISNULL(cvd.BoPhanPhoiHop,'') + ',') LIKE '%,' + CAST(@filterMaDV AS varchar) + ',%' OR cvd.DungChung=1)";
             p.Add("filterMaDV", filterMaDV);
         }
         if (maDVXL.HasValue) { where += " AND cvd.MaDVXL=@maDVXL"; p.Add("maDVXL", maDVXL); }
@@ -2597,6 +2606,29 @@ public class DbService
         await db.ExecuteAsync("DELETE FROM LichLamViec WHERE MaLich=@maLich", new { maLich });
     }
 
+    // Lịch của RIÊNG 1 người dùng để xuất ra feed .ics (liên kết Google Calendar) — chỉ lấy đúng
+    // phạm vi họ vốn xem được trên lưới Lịch làm việc: lịch công tác (LoaiLich=2, hiện cho toàn
+    // trường từ trước), lịch lãnh đạo của chính họ, và lịch lãnh đạo mà họ được kèm theo. KHÔNG lấy
+    // lịch lãnh đạo của người khác (đúng như lưới web chỉ hiện SỐ LƯỢNG cho người ngoài cuộc).
+    public async Task<List<LichLamViec>> GetLichLamViecChoIcsAsync(short maNV, DateTime tuNgay, DateTime denNgay)
+    {
+        using var db = Open();
+        const string sql = @"
+            SELECT ll.*, (nv.HoNV+' '+nv.TenNV) AS TenNVLanhDao, dv.TenDV, ph.TenPhong
+            FROM LichLamViec ll
+            JOIN NhanVien nv ON ll.MaNVLanhDao=nv.MaNV
+            LEFT JOIN DonVi dv ON ll.MaDV=dv.MaDV
+            LEFT JOIN PhongHop ph ON ll.MaPhong=ph.MaPhong
+            WHERE ll.ThoiGianBatDau >= @tuNgay AND ll.ThoiGianBatDau < @denNgayExclusive
+              AND (
+                    ll.LoaiLich = 2
+                    OR ll.MaNVLanhDao = @maNV
+                    OR (',' + ISNULL(ll.NguoiKemTheo,'') + ',') LIKE '%,' + CAST(@maNV AS varchar) + ',%'
+              )
+            ORDER BY ll.ThoiGianBatDau";
+        return (await db.QueryAsync<LichLamViec>(sql, new { tuNgay, denNgayExclusive = denNgay.Date.AddDays(1), maNV })).ToList();
+    }
+
     // ── Văn phòng điện tử: Thông báo nội bộ ──────────────────────────────────
     // Lọc theo đối tượng nhắm tới ở tầng C# (danh sách thông báo cho toàn trường thường
     // không lớn) — DoiTuong=0 luôn thấy, =1 khớp đơn vị, =2 khớp giao nhau với quyền hiện tại.
@@ -2636,13 +2668,26 @@ public class DbService
     {
         using var db = Open();
         const string sql = @"
-            INSERT INTO ThongBaoNoiBo (TieuDe, NoiDung, DoiTuong, DonViNhan, QuyenNhan, MucDo, FileDinhKem, MaNVDang, NgayDang, HetHan)
+            INSERT INTO ThongBaoNoiBo (TieuDe, NoiDung, DoiTuong, DonViNhan, QuyenNhan, MucDo, FileDinhKem, MaNVDang, NgayDang, HetHan, CongKhai)
             OUTPUT INSERTED.MaTB
-            VALUES (@TieuDe, @NoiDung, @DoiTuong, @DonViNhan, @QuyenNhan, @MucDo, @FileDinhKem, @MaNVDang, GETDATE(), @HetHan);";
+            VALUES (@TieuDe, @NoiDung, @DoiTuong, @DonViNhan, @QuyenNhan, @MucDo, @FileDinhKem, @MaNVDang, GETDATE(), @HetHan, @CongKhai);";
         return await db.ExecuteScalarAsync<int>(sql, new
         {
-            tb.TieuDe, tb.NoiDung, tb.DoiTuong, tb.DonViNhan, tb.QuyenNhan, tb.MucDo, tb.FileDinhKem, MaNVDang = maNVDang, tb.HetHan
+            tb.TieuDe, tb.NoiDung, tb.DoiTuong, tb.DonViNhan, tb.QuyenNhan, tb.MucDo, tb.FileDinhKem, MaNVDang = maNVDang, tb.HetHan, tb.CongKhai
         });
+    }
+
+    // Thông báo hiện trên trang CÔNG KHAI (/cong-khai, không cần đăng nhập) — chỉ những cái đã được
+    // người đăng chủ động tick "Công khai" và còn hạn.
+    public async Task<List<ThongBaoNoiBo>> GetThongBaoCongKhaiAsync()
+    {
+        using var db = Open();
+        return (await db.QueryAsync<ThongBaoNoiBo>(
+            @"SELECT tb.*, (nv.HoNV+' '+nv.TenNV) AS TenNVDang
+              FROM ThongBaoNoiBo tb
+              JOIN NhanVien nv ON tb.MaNVDang=nv.MaNV
+              WHERE tb.CongKhai=1 AND (tb.HetHan IS NULL OR tb.HetHan >= GETDATE())
+              ORDER BY tb.NgayDang DESC")).ToList();
     }
 
     public async Task XoaThongBaoNoiBoAsync(int maTB)
@@ -2815,6 +2860,13 @@ public class DbService
             @"INSERT INTO CongVanDen_ChiDao (MSCV, MaDV, LoaiHanhDong, MaNV, MaNVPhanCong, MaCVLienKet, NoiDung)
               VALUES (@mscv, @maDV, 1, @maNVChiDao, @maNVPhanCong, @maCV, @noiDung)",
             new { mscv, maDV, maNVChiDao, maNVPhanCong, maCV, noiDung });
+
+        // Đồng bộ sang hộp thư cá nhân: chủ trì = Xử lý chính, phối hợp = Đồng xử lý.
+        var nhan = new List<NguoiNhanXuLy> { new() { MaNV = maNVPhanCong, VaiTro = VanBanXuLy.VaiTroChinh } };
+        if (nguoiPhoiHop != null)
+            nhan.AddRange(nguoiPhoiHop.Where(x => x != maNVPhanCong).Distinct()
+                .Select(x => new NguoiNhanXuLy { MaNV = x, VaiTro = VanBanXuLy.VaiTroDongXuLy }));
+        await ChuyenXuLyAsync(VanBanXuLy.LoaiDen, mscv.Trim(), maNVChiDao, nhan, noiDung, hanXuLy, null);
 
         await db.ExecuteAsync(
             @"UPDATE CongVanDenXuLyDV SET TrangThai=2, NgayCapNhat=GETDATE(), MaNVCapNhat=@maNVChiDao,

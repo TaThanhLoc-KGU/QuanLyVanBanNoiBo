@@ -1,0 +1,242 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME 2026-09 — "SỔ CÔNG VĂN"
+   Nạp SAU site.css: đổi bộ token + ghi đè thành phần, giữ nguyên tên class nên
+   mọi trang đều đổi diện mạo cùng lúc mà không phải sửa từng view.
+
+   Ý tưởng: giấy trắng, mực xanh đen, một con dấu đỏ.
+   - Nền sáng nhẹ, sidebar TRẮNG (không còn khối xanh đậm nặng nề).
+   - Xanh cobalt là màu hành động duy nhất; DẤU ĐỎ (vermilion) chỉ dành cho việc
+     cần bạn xử lý ngay: chưa xem, quá hạn, huy hiệu đếm.
+   - Số ký hiệu / ngày tháng dùng chữ đơn cách (mono) căn cột — như trong cuốn sổ.
+   - Bảng: kẻ ngang mảnh, không kẻ ô; hàng cần xử lý có vạch đỏ bên trái.
+   Quy tắc cũ được giữ: nội dung ô luôn xuống dòng, không cắt chữ.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Bảng màu lấy từ logo trường: xanh mòng két (bánh răng/sóng), vàng & nâu (lúa), xanh lá non */
+  --primary:      #1B6580;
+  --primary-dark: #134B60;
+  --primary-50:   #EAF3F6;
+  --primary-100:  #D3E7ED;
+  --primary-200:  #A8CDD9;
+  --primary-ring: rgba(27,101,128,.22);
+  --gold:         #DBA20A;
+  --leaf:         #8AAE1A;
+
+  --seal:         #C8372D;          /* dấu đỏ — việc cần xử lý */
+  --seal-bg:      #FCEDEB;
+
+  --sidebar-w: 250px;
+  --topbar-h:  56px;
+
+  --sidebar-bg:          #FFFFFF;
+  --sidebar-border:      #E4E8EE;
+  --sidebar-text:        #3C4A5B;
+  --sidebar-muted:       #8593A6;
+  --sidebar-hover:       #F2F5F9;
+  --sidebar-active-bg:   #EAF3F6;
+  --sidebar-active-text: #134B60;
+  --sidebar-brand-bg:    #FFFFFF;
+
+  --bg:       #F4F6F9;
+  --card:     #FFFFFF;
+  --text:     #17222F;
+  --text-soft:#405064;
+  --muted:    #6C7A8D;
+  --border:   #E4E8EE;
+  --border-2: #CFD7E2;
+
+  --success:    #1E7A52;
+  --danger:     #C8372D;
+  --warning:    #A96A0C;
+  --info:       #1F6F8F;
+  --success-bg: #EAF6F0;  --success-bd: #C6E6D6;
+  --danger-bg:  #FCEDEB;  --danger-bd:  #F2CAC5;
+  --warning-bg: #FCF3E2;  --warning-bd: #F1DDB0;
+  --info-bg:    #EAF3F6;  --info-bd:    #BFDDE6;
+
+  --radius:    12px;
+  --radius-sm: 8px;
+  --shadow:    0 1px 2px rgba(23,34,47,.04);
+  --shadow-md: 0 4px 14px rgba(23,34,47,.08);
+  --shadow-lg: 0 16px 40px rgba(23,34,47,.16);
+
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+html { font-size: 15px; }
+body { background: var(--bg); font-feature-settings: "tnum" 1; }
+h1, h2, h3 { letter-spacing: -.015em; }
+
+/* ── Sidebar trắng ──────────────────────────────────────────────────── */
+.sidebar { background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
+.sidebar::-webkit-scrollbar-thumb { background: #D5DCE6; }
+.sidebar-brand { background: transparent; border-bottom: 1px solid var(--sidebar-border); padding: 0 16px; }
+.sidebar-logo { width: auto; height: 38px; background: none; box-shadow: none; border-radius: 0; }
+.sidebar-logo-img { height: 38px; width: auto; display: block; }
+.sidebar-brand { border-bottom-color: var(--sidebar-border); }
+.sidebar-brand::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--gold), var(--leaf) 60%, transparent); opacity: .85; }
+.sidebar-brand { position: relative; }
+.sidebar-brand-name { color: var(--text); font-size: 14px; font-weight: 800; }
+.sidebar-brand-name small { color: var(--muted); font-weight: 500; }
+
+.sidebar-section { padding: 14px 10px 2px; }
+.sidebar-section-label { color: var(--sidebar-muted); font-size: 10.5px; letter-spacing: .1em; }
+.sidebar-section-label.collapsible:hover { color: var(--text-soft); }
+.sidebar-subgroup-label { color: var(--sidebar-muted); }
+
+.nav-link-main {
+  color: var(--sidebar-text); min-height: 38px; padding: 8px 12px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500; position: relative;
+}
+.nav-link-main:hover { background: var(--sidebar-hover); color: var(--text); }
+.nav-link-main.active {
+  background: var(--sidebar-active-bg); color: var(--sidebar-active-text);
+  font-weight: 700; box-shadow: none;
+}
+.nav-link-main.active::before {
+  content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--primary);
+}
+.nav-link-main i.nav-icon { font-size: 15px; color: #7C8B9F; }
+.nav-link-main.active i.nav-icon { color: var(--primary); }
+.nav-badge, .badge-count {
+  margin-left: auto; background: var(--seal); color: #fff;
+  font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 20px; min-width: 20px;
+  height: auto; line-height: 1.5;
+}
+.nav-link-main.active .nav-badge { background: var(--seal); color: #fff; }
+
+.sidebar-user { background: transparent; border-top: 1px solid var(--sidebar-border); }
+.sidebar-user-btn:hover { background: var(--sidebar-hover); }
+.user-avatar { background: var(--primary-50); color: var(--primary); border: 1px solid var(--primary-100); }
+.user-name { color: var(--text); }
+.user-role { color: var(--muted); }
+#userMenuDD { background: #fff !important; border: 1px solid var(--border) !important; box-shadow: var(--shadow-lg); }
+#userMenuDD .dropdown-item { color: var(--text-soft); }
+#userMenuDD .dropdown-item:hover { background: var(--sidebar-hover); color: var(--text); }
+#userMenuDD .dropdown-item.text-danger { color: var(--seal) !important; }
+#userMenuDD .dropdown-divider { border-color: var(--border); }
+
+/* ── Topbar ─────────────────────────────────────────────────────────── */
+.topbar { box-shadow: none; padding: 0 24px; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); }
+.topbar-breadcrumb .page-title { font-weight: 700; }
+.topbar-new-btn { border-radius: 8px; padding: 7px 13px; font-size: 13px; }
+.topbar-icon-btn { border-radius: 8px; }
+.topbar-icon-btn:hover { background: var(--sidebar-hover); }
+
+.page-content { padding: 24px 28px 40px; max-width: 1560px; }
+
+/* ── Tiêu đề trang ──────────────────────────────────────────────────── */
+.page-header { margin-bottom: 18px; align-items: flex-end; }
+.page-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.page-header h1 > i { color: var(--primary); font-size: 20px; }
+.page-header-sub { font-size: 13.5px; color: var(--muted); max-width: 70ch; }
+
+/* ── Thẻ ────────────────────────────────────────────────────────────── */
+.card { border-radius: var(--radius); box-shadow: var(--shadow); border-color: var(--border); }
+.card-header { padding: 13px 18px; }
+.card-title { font-size: 13.5px; font-weight: 800; }
+.filter-bar { box-shadow: none; padding: 14px 16px; border-radius: var(--radius); }
+.filter-bar .fb-item label { font-size: 12px; font-weight: 700; letter-spacing: .01em; }
+
+/* ── Thanh tab: dạng gạch chân, không còn khối màu ─────────────────── */
+.tab-bar {
+  background: transparent; border: none; border-bottom: 1px solid var(--border); border-radius: 0;
+  padding: 0; margin-bottom: 18px; box-shadow: none; gap: 4px;
+}
+.tab-pill {
+  padding: 10px 14px; border-radius: 8px 8px 0 0; font-size: 13.5px; font-weight: 600;
+  color: var(--muted); position: relative; margin-bottom: -1px; border-bottom: 2px solid transparent;
+}
+.tab-pill:hover { background: var(--sidebar-hover); color: var(--text); }
+.tab-pill.active { background: transparent; color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+.tab-pill .cnt { background: var(--bg); color: var(--text-soft); font-weight: 700; }
+.tab-pill.active .cnt { background: var(--primary-50); color: var(--primary); }
+.tab-pill.tone-danger:not(.active)  { color: var(--seal); }
+.tab-pill.tone-warning:not(.active) { color: var(--warning); }
+.tab-pill.tone-success:not(.active) { color: var(--success); }
+.tab-pill .badge-count { margin-left: 2px; }
+
+/* ── Bảng: kẻ ngang mảnh như trang sổ ───────────────────────────────── */
+.tbl-wrap, .table-wrapper { box-shadow: none; border-radius: var(--radius); border-color: var(--border); }
+.app-table { border: none; font-size: 13.5px; }
+.app-table thead th {
+  background: #F8FAFC; color: var(--muted); font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; padding: 10px 14px; border: none; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.app-table td { padding: 12px 14px; border: none; border-bottom: 1px solid #EDF0F4; color: var(--text); }
+.app-table tbody tr:last-child td { border-bottom: none; }
+.app-table tbody tr:hover { background: #F7F9FC; }
+.app-table td a { font-weight: 600; text-decoration: none; }
+.app-table td a:hover { text-decoration: underline; }
+/* Số ký hiệu / ngày: chữ đơn cách */
+.app-table td.num-cell, .app-table td.mono, .mono, .so-kh {
+  font-family: var(--font-mono); font-size: 12.5px; letter-spacing: -.01em; color: var(--text);
+}
+.app-table.tbl-compact th, .app-table.tbl-compact td { padding: 9px 10px; font-size: 12.5px; }
+.app-table.tbl-compact thead th { font-size: 10px; }
+
+/* Hàng cần bạn xử lý: vạch đỏ bên trái thay vì tô cả dòng vàng */
+.tr-unread { background: #fff !important; }
+.tr-unread td { font-weight: 600; }
+.tr-unread td:first-child { box-shadow: inset 3px 0 0 var(--seal); }
+.tr-danger { background: #FFFBFA !important; }
+.tr-danger td:first-child { box-shadow: inset 3px 0 0 var(--seal); }
+.tr-success { background: #fff !important; }
+.row-needs-action { background: #FFFDF8; }
+.row-needs-action td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+.dot-unread { background: var(--seal); width: 7px; height: 7px; }
+
+/* ── Nhãn trạng thái: ô vuông màu + chữ, gọn hơn ────────────────────── */
+.sbadge, .badge-status {
+  padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; gap: 6px;
+}
+.sbadge::before, .badge-status::before { width: 6px; height: 6px; border-radius: 2px; }
+.badge-status.new, .badge-status.processing { background: var(--info-bg); color: var(--info); border-color: var(--info-bd); }
+.badge-status.overdue { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bd); }
+
+/* ── Nút ────────────────────────────────────────────────────────────── */
+.btn { border-radius: 8px; font-size: 13.5px; font-weight: 600; padding: 8px 15px; }
+.btn-sm { font-size: 12.5px; padding: 6px 12px; }
+.btn-primary { background: var(--primary); border-color: var(--primary); }
+.btn-primary:hover, .btn-primary:focus { background: var(--primary-dark); border-color: var(--primary-dark); }
+.btn-outline-primary { border-color: var(--primary-200); color: var(--primary); background: #fff; }
+.btn-outline-primary:hover { background: var(--primary-50); color: var(--primary-dark); border-color: var(--primary); }
+.btn-outline-secondary { background: #fff; border-color: var(--border-2); color: var(--text-soft); }
+.btn-outline-secondary:hover { background: var(--sidebar-hover); color: var(--text); border-color: var(--border-2); }
+.btn-outline-danger { background: #fff; }
+.btn-outline-danger:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.btn:focus-visible, .form-control:focus-visible, a:focus-visible, .tab-pill:focus-visible, .nav-link-main:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px;
+}
+
+/* ── Biểu mẫu ───────────────────────────────────────────────────────── */
+.form-label { font-size: 12.5px; font-weight: 700; color: var(--text-soft); }
+.form-control, .form-select { border-radius: 8px; font-size: 14px; min-height: 40px; }
+.form-control:disabled, .form-control[readonly] { background: #F8FAFC; }
+.form-section { border-radius: var(--radius); }
+
+/* ── Cửa sổ, cảnh báo, phân trang ───────────────────────────────────── */
+.modal-content { border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+.modal-header { border-bottom: 1px solid var(--border); }
+.modal-footer { border-top: 1px solid var(--border); background: #FAFBFD; border-radius: 0 0 14px 14px; }
+.alert { border-radius: 10px; }
+.pagination-bar { border-radius: var(--radius); box-shadow: none; }
+.empty-state i { opacity: .25; }
+
+/* ── Chi tiết / dòng thời gian ──────────────────────────────────────── */
+.detail-lbl { color: var(--muted); font-weight: 600; }
+.timeline-dot { background: var(--primary); }
+
+/* ── Điện thoại ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .page-content { padding: 16px 14px 32px; }
+  .nav-link-main.active::before { left: -10px; }
+  .topbar { padding: 0 14px; }
+  .page-header h1 { font-size: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

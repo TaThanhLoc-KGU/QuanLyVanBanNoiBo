@@ -14,8 +14,10 @@ public class NotificationController : BaseController
         if (MaNV == 0 || CoQuyen("Global.XemToanTruong"))
             return Json(new { count = 0, items = Array.Empty<object>(), eventCount = 0, events = Array.Empty<object>() });
 
-        var count = await _db.DemCVChuaXemAsync(MaDV, MaNV);
-        var items = await _db.GetCVMoiChuaXemAsync(MaDV, MaNV, 5);
+        // Viên chức thường: chuông KHÔNG liệt kê văn bản đến theo đơn vị (họ chỉ thấy văn bản được chuyển cho mình —
+        // xem ở "Văn bản của tôi"), chỉ giữ các thông báo việc mới giao/chuyển đến.
+        var count = LaVienChucThuong ? 0 : await _db.DemCVChuaXemAsync(MaDV, MaNV);
+        var items = LaVienChucThuong ? new List<Models.CongVanDen>() : await _db.GetCVMoiChuaXemAsync(MaDV, MaNV, 5);
         var eventCount = await _db.DemThongBaoChuaXemAsync(MaNV, MaDV);
         var events = await _db.GetThongBaoCaNhanAsync(MaNV, MaDV, 8);
         return Json(new {

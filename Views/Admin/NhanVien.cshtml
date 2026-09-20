@@ -13,6 +13,9 @@
         <p class="page-header-sub">@soDangLam đang làm việc@(soNghiViec > 0 ? $" — {soNghiViec} đã thôi việc/nghỉ việc" : "")</p>
     </div>
     <div class="page-header-actions">
+        <a asp-action="XuatTaiKhoanExcel" class="btn btn-sm btn-outline-success" title="Excel có 6 sheet: Tất cả, Lãnh đạo trường, Lãnh đạo đơn vị, Văn thư cấp 1, Văn thư cấp 2, Chuyên viên">
+            <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel theo cấp
+        </a>
         <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quản trị hệ thống</a>
     </div>
 </div>

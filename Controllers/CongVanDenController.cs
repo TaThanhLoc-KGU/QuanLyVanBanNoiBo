@@ -54,7 +54,8 @@ public class CongVanDenController : BaseController
         byte? filterMaDV = CoQuyen("Global.XemToanTruong") ? null : (byte?)MaDV;
         var pageSize = 30;
         var (items, total) = await _db.GetCongVanDenPagedAsync(
-            nam, maSCV, tuKhoa, filterMaDV, MaNV, maDVXL, nguoiKy, tuNgay, denNgay, page, pageSize);
+            nam, maSCV, tuKhoa, filterMaDV, MaNV, maDVXL, nguoiKy, tuNgay, denNgay, page, pageSize,
+            chiCaNhanVaDungChung: LaVienChucThuong);
         var vm = new CongVanDenFilterViewModel
         {
             Nam = nam, MaSCV = maSCV, TuKhoa = tuKhoa, MaDVXL = maDVXL, NguoiKy = nguoiKy, TuNgay = tuNgay, DenNgay = denNgay,
@@ -127,6 +128,7 @@ public class CongVanDenController : BaseController
 
         // Tạo/cập nhật bản ghi theo dõi đơn vị
         await _db.TaoXuLyDVAsync(cv.MSCV, cv.MaDVXL, cv.BoPhanPhoiHop);
+        await _db.DatDungChungCongVanDenAsync(cv.MSCV, cv.DungChung);
 
         // Lưu nhiều file đính kèm, thu thập path để gửi kèm email
         var savedFiles = new List<(string TenFile, string FullPath)>();
@@ -203,7 +205,7 @@ public class CongVanDenController : BaseController
     public async Task<IActionResult> XemFile(int id, string mscv)
     {
         var cv = await _db.GetCongVanDenByIdAsync(mscv);
-        if (cv == null || !CoTheXemCongVanDen(cv)) return NotFound();
+        if (cv == null || !await CoTheXemCongVanDenAsync(cv)) return NotFound();
         var files = await _db.GetFileDinhKemAsync(mscv);
         var f = files.FirstOrDefault(x => x.ID == id);
         if (f == null) return NotFound();
@@ -216,7 +218,7 @@ public class CongVanDenController : BaseController
     public async Task<IActionResult> TaiFileMot(int id, string mscv)
     {
         var cv = await _db.GetCongVanDenByIdAsync(mscv);
-        if (cv == null || !CoTheXemCongVanDen(cv)) return NotFound();
+        if (cv == null || !await CoTheXemCongVanDenAsync(cv)) return NotFound();
         var files = await _db.GetFileDinhKemAsync(mscv);
         var f = files.FirstOrDefault(x => x.ID == id);
         if (f == null) return NotFound();
@@ -228,7 +230,7 @@ public class CongVanDenController : BaseController
     public async Task<IActionResult> TaiFile(string mscv)
     {
         var cv = await _db.GetCongVanDenByIdAsync(mscv);
-        if (cv == null || !CoTheXemCongVanDen(cv)) return NotFound();
+        if (cv == null || !await CoTheXemCongVanDenAsync(cv)) return NotFound();
         var files = await _db.GetFileDinhKemAsync(mscv);
         if (files.Count == 0) return NotFound();
 
@@ -334,16 +336,22 @@ public class CongVanDenController : BaseController
     // dùng báo lại. Nay CHỈ CẦN GIỮ 1 TRONG BẤT KỲ quyền "Văn bản đến" nào (tất cả đều ngụ ý được xử
     // lý/xem ngoài phạm vi đơn vị mình) — người bị chặn thật sự chỉ còn là tài khoản không giữ quyền
     // "Văn bản đến" nào cả và cũng không thuộc đơn vị liên quan (đúng đối tượng lỗ hổng ban đầu).
-    private static readonly string[] QuyenVuotPhamViCongVanDen =
+    // VIÊN CHỨC THƯỜNG (2026-09-20): không giữ quyền "Văn bản đến" nào, không phải văn thư/lãnh đạo đơn vị.
+    // Họ KHÔNG còn thấy văn bản đến theo đơn vị — chỉ thấy văn bản (a) được chuyển cho chính họ (hộp thư
+    // cá nhân), (b) được giao việc từ văn bản đó, hoặc (c) văn bản DÙNG CHUNG nội bộ (quyết định, thông
+    // báo, biên bản... do văn thư đánh dấu).
+    // Chỉ áp dụng khi Admin đã "công bố tính năng mới" (hộp thư cá nhân phải dùng được thì mới
+    // được thu hẹp quyền xem theo đơn vị — nếu không người dùng sẽ mất văn bản mà chẳng có chỗ xem thay).
+
+    private async Task<bool> CoTheXemCongVanDenAsync(CongVanDen cv)
     {
-        "Global.XemToanTruong", "CongVanDen.Nhap", "CongVanDen.Xoa", "CongVanDen.GuiEmail",
-        "CongVanDen.XacNhanHoanThanh", "CongVanDen.XuLyDV", "CongVanDen.ChuyenXuLy",
-        "CongVanDen.ChiDaoPhanCong", "CongVanDen.XinYKienBGH", "CongVanDen.TraLai", "CongVanDen.BGHTraLoiYKien"
-    };
-    private bool CoTheXemCongVanDen(CongVanDen cv) =>
-        QuyenVuotPhamViCongVanDen.Any(CoQuyen)
-        || cv.MaDVXL == MaDV
-        || (',' + (cv.BoPhanPhoiHop ?? "") + ',').Contains($",{MaDV},");
+        if (cv.DungChung) return true;
+        if (QuyenVuotPhamViCongVanDen.Any(CoQuyen)) return true;
+        if (!LaVienChucThuong &&
+            (cv.MaDVXL == MaDV || (',' + (cv.BoPhanPhoiHop ?? "") + ',').Contains($",{MaDV},"))) return true;
+        return MaNV > 0 && (await _db.CoLienQuanVanBanAsync(VanBanXuLy.LoaiDen, cv.MSCV.Trim(), MaNV)
+                            || await _db.LaNguoiXuLyCongViecCuaVanBanAsync(cv.MSCV.Trim(), MaNV));
+    }
 
     // Chi tiết + lịch sử xử lý
     // BUG BẢO MẬT đã vá 2026-09-12: TRƯỚC ĐÂY action này không kiểm tra phạm vi đơn vị — bất kỳ
@@ -354,7 +362,7 @@ public class CongVanDenController : BaseController
     {
         var cv = await _db.GetCongVanDenByIdAsync(id);
         if (cv == null) return NotFound();
-        if (!CoTheXemCongVanDen(cv)) return Forbid();
+        if (!await CoTheXemCongVanDenAsync(cv)) return Forbid();
         if (MaNV > 0) await _db.DanhDauDaXemAsync(id, MaNV);
         if (MaDV > 0) await _db.DanhDauDaXemXuLyDVAsync(id, MaDV);
         ViewBag.LichSuXuLy  = await _db.GetLichSuXuLyAsync(id);
@@ -366,6 +374,23 @@ public class CongVanDenController : BaseController
         ViewBag.FilesByXuLyDV = await _db.GetXuLyDVFilesByMscvAsync(id);
         ViewBag.ChiDao      = await _db.GetChiDaoAsync(id);
         ViewBag.LanhDao     = await _db.GetLanhDaoAsync();
+
+        // Hộp thư cá nhân: mở xem = đánh dấu đã xem; panel "Quá trình xử lý theo người".
+        var mscvTrim = cv.MSCV.Trim();
+        var dongCuaToi = MaNV > 0 ? await _db.GetDongDangChoAsync(VanBanXuLy.LoaiDen, mscvTrim, MaNV) : null;
+        if (dongCuaToi != null && dongCuaToi.NgayXem == null) { await _db.MoXemXuLyAsync(dongCuaToi.ID, MaNV); dongCuaToi = await _db.GetDongDangChoAsync(VanBanXuLy.LoaiDen, mscvTrim, MaNV); }
+        bool coTheChuyenGoc = CoQuyen("CongVanDen.Nhap") || CoQuyen("CongVanDen.ChiDaoPhanCong") || CoQuyen("CongVanDen.ChuyenXuLy")
+            || CoQuyen("CongVanDen.XuLyDV") || CoQuyen("Global.XemToanTruong")
+            || (cv.MaDVXL.HasValue && (await LaLanhDaoDonViAsync(cv.MaDVXL.Value) || await LaVanThuDonViAsync(cv.MaDVXL.Value)));
+        ViewBag.XuLyPanel = new XuLyPanelViewModel
+        {
+            LoaiVB = VanBanXuLy.LoaiDen, MSCV = mscvTrim, MaNV = MaNV, DongCuaToi = dongCuaToi,
+            TatCa = await _db.GetXuLyCuaVanBanAsync(VanBanXuLy.LoaiDen, mscvTrim),
+            NhatKy = await _db.GetNhatKyVanBanAsync(VanBanXuLy.LoaiDen, mscvTrim),
+            CoTheChuyenGoc = coTheChuyenGoc,
+            NhanVien = (dongCuaToi != null && dongCuaToi.VaiTro != VanBanXuLy.VaiTroXemBiet) || coTheChuyenGoc
+                ? await _db.GetAllNhanVienAsync() : new List<NhanVien>()
+        };
 
         // Tính sẵn theo từng đơn vị xuất hiện trong bảng xử lý: user có thao tác được (tiếp nhận/
         // cập nhật/upload) không, và có phải lãnh đạo đơn vị đó (chỉ đạo/phân công/xin ý kiến/trả

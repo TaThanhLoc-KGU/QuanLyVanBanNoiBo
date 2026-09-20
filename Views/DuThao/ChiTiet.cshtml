@@ -1,0 +1,124 @@
+@model CongVan.Models.DuThaoChiTietViewModel
+@{
+    var d = Model.DuThao;
+    ViewData["Title"] = "Văn bản đi #" + d.ID;
+    string buoc = Model.BuocHienTai; // soan | duyet | banhanh | xong
+    string Cls(string b)
+    {
+        string[] thuTu = { "soan", "duyet", "banhanh", "xong" };
+        int cur = Array.IndexOf(thuTu, buoc), me = Array.IndexOf(thuTu, b);
+        return me < cur ? "done" : me == cur ? (buoc == "xong" ? "done" : "on") : "";
+    }
+    bool sua = Model.LaNguoiSoan && d.TrangThai != CongVan.Models.DuThao.DaBanHanh && Model.Panel.DongCuaToi != null || (Model.LaNguoiSoan && d.TrangThai == CongVan.Models.DuThao.Nhap);
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-send-fill me-2"></i>Văn bản đi <span class="mono" style="font-size:16px;color:var(--muted);">#@d.ID</span></h1>
+        <p class="page-header-sub">Soạn bởi <strong>@d.TenNVSoan</strong> · @d.TenDVSoan · tạo lúc @d.NgayTao.ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+    <div class="page-header-actions">
+        @if (Model.CoTheBanHanhNgay)
+        {
+            <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành ngay</a>
+        }
+        @if (Model.CoTheTrinh)
+        {
+            <form asp-action="Trinh" asp-route-id="@d.ID" method="post" class="d-inline">
+                <button class="@(Model.CoTheBanHanhNgay ? "btn btn-outline-primary" : "btn btn-primary")" onclick="return confirm('Trình duyệt văn bản này?')"><i class="bi bi-send-fill me-1"></i>Trình duyệt</button>
+            </form>
+        }
+        @if (Model.CoTheDuyet)
+        {
+            <form asp-action="Duyet" asp-route-id="@d.ID" method="post" class="d-inline">
+                <button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Duyệt &amp; chuyển tiếp</button>
+            </form>
+        }
+        @if (Model.CoTheBanHanh)
+        {
+            <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành</a>
+        }
+        @if (sua)
+        {
+            <a asp-action="Nhap" asp-route-id="@d.ID" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Sửa</a>
+        }
+        @if (Model.LaNguoiSoan && d.TrangThai == CongVan.Models.DuThao.Nhap)
+        {
+            <form asp-action="Xoa" asp-route-id="@d.ID" method="post" class="d-inline">
+                <button class="btn btn-outline-danger" onclick="return confirm('Xóa dự thảo này? Không thể khôi phục.')"><i class="bi bi-trash3 me-1"></i>Xóa</button>
+            </form>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Văn bản đi</a>
+    </div>
+</div>
+
+@* ── Sơ đồ luồng: đang ở bước nào ── *@
+<div class="card mb-3"><div class="card-body">
+    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+        <span class="sbadge @(d.PhamVi == 2 ? "sbadge-info" : "sbadge-primary")"><i class="bi @(d.PhamVi == 2 ? "bi-people" : "bi-building")"></i>@d.TenPhamVi</span>
+        @if (buoc != "xong" && !string.IsNullOrEmpty(Model.TenNguoiDangGiu)) { <span class="fs-13 text-muted">Đang ở: <strong>@Model.TenNguoiDangGiu</strong></span> }
+    </div>
+    <div class="flow-line">
+        <div class="flow-node @Cls("soan")"><i class="bi bi-pencil"></i><b>Người soạn</b><span>@d.TenNVSoan</span></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-node @Cls("duyet")"><i class="bi bi-person-check"></i><b>@(d.PhamVi == 2 ? "Lãnh đạo đơn vị duyệt" : (Model.TenChuoiConLai.Count > 1 ? "Duyệt/ký " + Model.TenChuoiConLai.Count + " cấp" : "Duyệt/ký"))</b>
+            <span>@(d.PhamVi == 2 ? (string.IsNullOrEmpty(Model.TenLanhDaoDonVi) ? "Chưa cấu hình lãnh đạo" : Model.TenLanhDaoDonVi) : (Model.TenChuoiConLai.Any() ? string.Join(" → ", Model.TenChuoiConLai) : "Không qua bước duyệt"))</span></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-node @Cls("banhanh")"><i class="bi bi-journal-check"></i><b>@Model.TenVanThu ban hành</b><span>@(d.PhamVi == 2 ? "Vào sổ nội bộ đơn vị" : "Vào sổ, cấp số ký hiệu")</span></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-node @(buoc == "xong" ? "done" : "")"><i class="bi bi-check-circle"></i><b>Đã ban hành</b><span>@(!string.IsNullOrEmpty(d.MSCVDi) ? "Số " + d.MSCVDi.Trim() : d.MaVBNoiBo.HasValue ? "Nội bộ #" + d.MaVBNoiBo : "—")</span></div>
+    </div>
+</div></div>
+
+<partial name="_XuLyCaNhan" model="Model.Panel" />
+
+<div class="card mb-3">
+    <div class="card-header"><span class="card-title"><i class="bi bi-info-circle me-1 text-primary"></i>Thông tin văn bản</span></div>
+    <div class="card-body">
+        <table class="detail-tbl" style="width:100%;">
+            <tr><td class="detail-lbl" style="width:170px;">Trích yếu</td><td class="detail-val"><strong>@d.TrichYeu</strong></td></tr>
+            <tr><td class="detail-lbl">Loại văn bản</td><td class="detail-val">@d.TenLVB</td></tr>
+            <tr><td class="detail-lbl">Độ khẩn</td><td class="detail-val" style="@(d.DoKhan > 0 ? "color:var(--seal);font-weight:700;" : "")">@d.TenDoKhan</td></tr>
+            @if (!string.IsNullOrEmpty(d.TenNCV)) { <tr><td class="detail-lbl">Lĩnh vực</td><td class="detail-val">@d.TenNCV</td></tr> }
+            <tr><td class="detail-lbl">Hình thức</td><td class="detail-val">@d.TenHinhThuc</td></tr>
+            <tr><td class="detail-lbl">Người ký dự kiến</td><td class="detail-val">@(d.TenNVKy ?? "—")</td></tr>
+            <tr><td class="detail-lbl">Hạn xử lý</td><td class="detail-val">@(d.HanXuLy?.ToString("dd/MM/yyyy") ?? "—")</td></tr>
+            @if (!string.IsNullOrEmpty(d.MSCVDen))
+            {
+                <tr><td class="detail-lbl">Trả lời văn bản đến</td><td class="detail-val"><a asp-controller="CongVanDen" asp-action="ChiTiet" asp-route-id="@d.MSCVDen">@(d.TrichYeuDen ?? d.MSCVDen)</a></td></tr>
+            }
+            @if (!string.IsNullOrEmpty(d.NoiDungXuLy)) { <tr><td class="detail-lbl">Nội dung xử lý</td><td class="detail-val" style="white-space:pre-line;">@d.NoiDungXuLy</td></tr> }
+            <tr><td class="detail-lbl">Nơi nhận</td><td class="detail-val">
+                @if (!Model.TenDVNhan.Any() && string.IsNullOrEmpty(d.NoiNhanKhac)) { <span class="text-muted">Chưa chọn</span> }
+                @foreach (var t in Model.TenDVNhan) { <span class="sbadge sbadge-gray me-1 mb-1">@t</span> }
+                @if (!string.IsNullOrEmpty(d.NoiNhanKhac)) { <div class="mt-1">@d.NoiNhanKhac</div> }
+            </td></tr>
+            <tr><td class="detail-lbl">File đính kèm</td><td class="detail-val">
+                @if (!Model.Files.Any()) { <span class="text-muted">Không có</span> }
+                @foreach (var f in Model.Files) { <div><i class="bi bi-paperclip"></i> <a asp-action="TaiFile" asp-route-fileId="@f.ID">@f.TenFile</a></div> }
+            </td></tr>
+            @if (d.MaVBNoiBo.HasValue)
+            {
+                <tr><td class="detail-lbl">Văn bản nội bộ</td><td class="detail-val"><a asp-controller="VanBanNoiBo" asp-action="ChiTiet" asp-route-id="@d.MaVBNoiBo">Đã ban hành nội bộ đơn vị — @d.NgayBanHanh?.ToString("dd/MM/yyyy")</a></td></tr>
+            }
+            @if (!string.IsNullOrEmpty(d.MSCVDi))
+            {
+                <tr><td class="detail-lbl">Văn bản đi</td><td class="detail-val"><a asp-controller="CongVanDi" asp-action="ChiTiet" asp-route-id="@d.MSCVDi.Trim()">Đã ban hành, số <span class="mono">@d.MSCVDi.Trim()</span> — @d.NgayBanHanh?.ToString("dd/MM/yyyy")</a></td></tr>
+            }
+        </table>
+    </div>
+</div>
+
+<style>
+    .flow-line { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+    .flow-node { flex: 1 1 150px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+    .flow-node i { color: var(--muted); font-size: 17px; }
+    .flow-node span { font-size: 12px; color: var(--muted); }
+    .flow-node.on { border-color: var(--primary); background: var(--primary-50); box-shadow: 0 0 0 3px var(--primary-ring); }
+    .flow-node.on i { color: var(--primary); }
+    .flow-node.done { border-color: var(--success-bd); background: var(--success-bg); }
+    .flow-node.done i { color: var(--success); }
+    .flow-arrow { flex: 0 0 28px; align-self: center; height: 2px; background: var(--border-2); position: relative; }
+    .flow-arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 7px solid var(--border-2); }
+    @@media (max-width: 700px) { .flow-arrow { display: none; } .flow-node { margin-bottom: 8px; } }
+</style>

@@ -36,6 +36,7 @@
             <tr>
                 <th>Loại văn bản</th>
                 <th style="width:160px;">Mã ký hiệu</th>
+                <th style="width:150px;text-align:center;" title="Văn bản đến loại này mặc định là dùng chung — mọi viên chức đều xem được">Dùng chung nội bộ</th>
                 <th style="width:130px;text-align:center;">Hiển thị</th>
             </tr>
         </thead>
@@ -48,6 +49,14 @@
                     <input type="text" class="form-control form-control-sm" value="@lvb.KyHieu"
                            placeholder="VD: QĐ, TB, KH"
                            onchange="setKyHieuLVB(@lvb.MaLVB, this.value)" />
+                </td>
+                <td style="text-align:center;">
+                    <div class="form-check form-switch d-flex justify-content-center m-0">
+                        <input class="form-check-input" type="checkbox"
+                               @(lvb.DungChung ? "checked" : "")
+                               onchange="setDungChungLVB(@lvb.MaLVB, this.checked)"
+                               style="cursor:pointer;width:36px;height:20px;" />
+                    </div>
                 </td>
                 <td style="text-align:center;">
                     <div class="form-check form-switch d-flex justify-content-center m-0">
@@ -93,6 +102,7 @@
 var _U = {
     setHienThiLVB: '@Url.Action("SetHienThiLoaiVB", "Admin")',
     setKyHieuLVB:  '@Url.Action("SetKyHieuLoaiVB", "Admin")',
+    setDungChungLVB: '@Url.Action("SetDungChungLoaiVB", "Admin")',
     themLVB:       '@Url.Action("ThemLoaiVB", "Admin")'
 };
 
@@ -127,6 +137,12 @@ function filterLVB() {
 function setHienThiLVB(maLVB, val) {
     post(_U.setHienThiLVB, { MaLVB: maLVB, HienThi: val }, function() {
         showToast('Đã cập nhật hiển thị loại văn bản.', 'success');
+    });
+}
+
+function setDungChungLVB(maLVB, val) {
+    post(_U.setDungChungLVB, { MaLVB: maLVB, DungChung: val }, function() {
+        showToast('Đã cập nhật: loại văn bản dùng chung nội bộ.', 'success');
     });
 }
 

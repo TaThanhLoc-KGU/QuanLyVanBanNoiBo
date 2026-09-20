@@ -1,0 +1,15 @@
+@model string
+@* Văn bản đi = MỘT mục duy nhất, 3 chặng của cùng một văn bản: soạn → đang xử lý → đã ban hành.
+   Dự thảo của tôi (tôi soạn) · Chờ tôi xử lý (tôi phải duyệt/ban hành) · Sổ văn bản đi (đã ban hành). *@
+<div class="tab-bar">
+    <a class="tab-pill @(Model == "duthao" ? "active" : "")" asp-controller="DuThao" asp-action="Index">
+        <i class="bi bi-pencil-square"></i>Dự thảo của tôi
+    </a>
+    <a class="tab-pill @(Model == "cho" ? "active" : "")" asp-controller="HopThu" asp-action="Index" asp-route-tab="cho" asp-route-loai="2">
+        <i class="bi bi-hourglass-split"></i>Chờ tôi xử lý
+        @if ((ViewData["DemChoDi"] as int? ?? 0) > 0) { <span class="badge-count">@ViewData["DemChoDi"]</span> }
+    </a>
+    <a class="tab-pill @(Model == "so" ? "active" : "")" asp-controller="CongVanDi" asp-action="Index">
+        <i class="bi bi-journal-check"></i>Sổ văn bản đi
+    </a>
+</div>

@@ -1,0 +1,65 @@
+@model List<CongVan.Models.DuThao>
+@{
+    ViewData["Title"] = "Văn bản đi";
+    var tuKhoa = ViewBag.TuKhoa as string;
+}
+
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-send-fill me-2"></i>Văn bản đi</h1>
+        <p class="page-header-sub">Soạn dự thảo, trình lãnh đạo đơn vị duyệt, văn thư ban hành — cả quy trình nằm trong một mục.</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="Nhap" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Soạn văn bản đi</a>
+    </div>
+</div>
+<partial name="_VanBanDiTabs" model='"duthao"' />
+
+<form method="get" class="d-flex gap-2 mb-3">
+    <input type="text" name="tuKhoa" value="@tuKhoa" class="form-control form-control-sm" style="max-width:360px;" placeholder="Tìm theo trích yếu..." />
+    <button class="btn btn-sm btn-primary"><i class="bi bi-search me-1"></i>Tìm</button>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="empty-state">
+            <i class="bi bi-file-earmark-text"></i>
+            <p>Bạn chưa soạn văn bản đi nào</p>
+            <a asp-action="Nhap" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Soạn văn bản đi đầu tiên</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable">
+            <thead>
+                <tr>
+                    <th style="width:70px;">Mã</th>
+                    <th>Trích yếu</th>
+                    <th style="width:150px;">Loại</th>
+                    <th style="width:90px;">Độ khẩn</th>
+                    <th style="width:120px;">Cập nhật</th>
+                    <th style="width:130px;">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var d in Model)
+            {
+                <tr onclick="location.href='@Url.Action("ChiTiet", new { id = d.ID })'">
+                    <td class="mono">#@d.ID</td>
+                    <td>
+                        @d.TrichYeu
+                        @if (!string.IsNullOrEmpty(d.MSCVDi)) { <div class="fs-12 text-muted" style="font-weight:400;">Đã vào sổ văn bản đi số <span class="mono">@d.MSCVDi.Trim()</span></div> }
+                    </td>
+                    <td>@d.TenLVB</td>
+                    <td style="@(d.DoKhan > 0 ? "color:var(--seal);font-weight:700;" : "")">@d.TenDoKhan</td>
+                    <td class="mono">@d.NgayCapNhat.ToString("dd/MM/yyyy")</td>
+                    <td><span class="badge-status @(d.TrangThai == 3 ? "done" : d.TrangThai == 1 ? "processing" : "new")">@d.TenTrangThai</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

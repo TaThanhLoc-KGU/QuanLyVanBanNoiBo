@@ -1,5 +1,5 @@
 @model CongVan.Models.CongVanDiFilterViewModel
-@{ ViewData["Title"] = "Sổ văn bản đi"; }
+@{ ViewData["Title"] = "Văn bản đi"; }
 @{
     var quyenList = ViewBag.QuyenList as List<int> ?? new();
     var chucNang = ViewBag.ChucNang as HashSet<string> ?? new();
@@ -10,7 +10,10 @@
 }
 
 <div class="page-header">
-    <h1><i class="bi bi-send-fill me-2 text-primary"></i>Sổ văn bản đi</h1>
+    <div>
+        <h1><i class="bi bi-send-fill me-2"></i>Văn bản đi</h1>
+        <p class="page-header-sub">Sổ các văn bản đã ban hành.</p>
+    </div>
     <div class="page-header-actions">
         <a asp-action="XuatExcel" asp-route-nam="@Model.Nam" asp-route-maSCV="@Model.MaSCV" asp-route-tuKhoa="@Model.TuKhoa"
            class="btn btn-sm btn-outline-secondary">
@@ -24,12 +27,22 @@
         }
         @if (coTheNhap)
         {
-            <a asp-action="Nhap" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus-lg me-1"></i>Vào số văn bản mới
+            <a asp-action="Nhap" class="btn btn-sm btn-outline-primary" title="Dùng cho văn bản giấy đã ký sẵn — vào sổ và cấp số ngay, không qua các bước soạn/duyệt">
+                <i class="bi bi-journal-plus me-1"></i>Vào sổ trực tiếp
+            </a>
+        }
+        @if (ViewBag.XemDuocTinhNangMoi as bool? ?? false)
+        {
+            <a asp-controller="DuThao" asp-action="Nhap" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Soạn văn bản đi
             </a>
         }
     </div>
 </div>
+@if (ViewBag.XemDuocTinhNangMoi as bool? ?? false)
+{
+    <partial name="_VanBanDiTabs" model='"so"' />
+}
 
 <!-- Modal nhập văn bản đi từ Excel -->
 <div class="modal fade" id="modalNhapExcel" tabindex="-1">

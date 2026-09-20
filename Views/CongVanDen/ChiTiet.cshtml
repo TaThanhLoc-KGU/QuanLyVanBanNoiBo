@@ -40,8 +40,8 @@
 
 <div class="page-header">
     <div>
-        <h1><i class="bi bi-file-earmark-text me-2 text-primary"></i>Chi tiết văn bản đến</h1>
-        <p class="page-header-sub">Mã số: @Model.MSCV?.Trim()</p>
+        <h1><i class="bi bi-inbox-fill me-2"></i>Văn bản đến</h1>
+        <p class="page-header-sub">Mã số <span class="mono">@Model.MSCV?.Trim()</span></p>
     </div>
     <div class="page-header-actions">
         @if (daHT)
@@ -93,43 +93,54 @@
                 </button>
             </form>
         }
+        @if (ViewBag.XemDuocTinhNangMoi as bool? ?? false)
+        {
+            <a asp-controller="DuThao" asp-action="Nhap" asp-route-traLoi="@Model.MSCV?.Trim()" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-reply-fill me-1"></i>Soạn dự thảo trả lời
+            </a>
+        }
         <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Quay lại
         </a>
     </div>
 </div>
 
-<div class="card mb-3" style="padding:20px 28px 22px;">
-    <div class="status-stepper lg">
+
+<div class="card mb-3 vb-hero">
+    <div class="vb-eyebrow">
+        @Model.TenLVB<span class="vb-dot"></span><span class="mono">@(Model.STT1 ?? Model.STT.ToString())</span>
+        @if (Model.DungChung) { <span class="sbadge sbadge-primary ms-2"><i class="bi bi-people-fill"></i>Dùng chung</span> }
+    </div>
+    <h2 class="vb-title">@Model.TrichYeu</h2>
+    <dl class="vb-meta">
+        <div><dt>Cơ quan phát hành</dt><dd>@(string.IsNullOrEmpty(Model.TenCQ) ? "—" : Model.TenCQ)</dd></div>
+        <div><dt>Ngày ban hành</dt><dd class="mono">@Model.NgayBanHanh.ToString("dd/MM/yyyy")</dd></div>
+        <div><dt>Ngày đến</dt><dd class="mono">@Model.NgayDen.ToString("dd/MM/yyyy")</dd></div>
+        <div><dt>Người ký</dt><dd>@(string.IsNullOrEmpty(Model.NguoiKy) ? "—" : Model.NguoiKy)</dd></div>
+        <div><dt>Hạn xử lý</dt><dd class="mono" style="@(quaHan ? "color:var(--seal);font-weight:700;" : "")">@(Model.NgayYCHT?.ToString("dd/MM/yyyy") ?? "—")@(quaHan ? " · quá hạn" : "")</dd></div>
+    </dl>
+    <div class="status-stepper lg mt-3">
         <div class="step done">
             <div class="step-dot"></div>
-            <div>
-                <div>Tiếp nhận</div>
-                <div style="font-weight:400;color:var(--muted);font-size:11px;margin-top:2px;">@Model.NgayDen.ToString("dd/MM/yyyy")</div>
-            </div>
+            <div><div>Tiếp nhận</div><div class="step-sub">@Model.NgayDen.ToString("dd/MM/yyyy")</div></div>
         </div>
         <div class="step-line @(daHT ? "done" : "")"></div>
         <div class="step @(daHT ? "done" : (quaHan ? "overdue" : "current"))">
             <div class="step-dot"></div>
-            <div>
-                <div>Đang xử lý</div>
-                <div style="font-weight:400;font-size:11px;margin-top:2px;color:@(quaHan && !daHT ? "var(--danger)" : "var(--muted)");">
-                    @(daHT ? "Đã qua" : (quaHan ? "Quá hạn xử lý" : (Model.NgayYCHT.HasValue ? "Hạn " + Model.NgayYCHT.Value.ToString("dd/MM/yyyy") : "Chưa có hạn")))
-                </div>
-            </div>
+            <div><div>Đang xử lý</div><div class="step-sub" style="color:@(quaHan && !daHT ? "var(--danger)" : "var(--muted)");">@(daHT ? "Đã qua" : (quaHan ? "Quá hạn xử lý" : (Model.NgayYCHT.HasValue ? "Hạn " + Model.NgayYCHT.Value.ToString("dd/MM/yyyy") : "Chưa có hạn")))</div></div>
         </div>
         <div class="step-line @(daHT ? "done" : "")"></div>
         <div class="step @(daHT ? "done" : "pending")">
             <div class="step-dot"></div>
-            <div>
-                <div>Hoàn thành</div>
-                <div style="font-weight:400;color:var(--muted);font-size:11px;margin-top:2px;">
-                    @(daHT && Model.NgayHT.HasValue ? Model.NgayHT.Value.ToString("dd/MM/yyyy") : "Chưa hoàn thành")
-                </div>
-            </div>
+            <div><div>Hoàn thành</div><div class="step-sub">@(daHT && Model.NgayHT.HasValue ? Model.NgayHT.Value.ToString("dd/MM/yyyy") : "Chưa hoàn thành")</div></div>
         </div>
     </div>
 </div>
+
+@if (ViewBag.XuLyPanel is CongVan.Models.XuLyPanelViewModel xuLyPanel && (ViewBag.XemDuocTinhNangMoi as bool? ?? false))
+{
+    <partial name="_XuLyCaNhan" model="xuLyPanel" />
+}
 
 @{
     byte maDVMe = (byte)ViewBag.MaDV;
@@ -189,180 +200,38 @@
         <div class="card mb-3">
             <div class="card-header">
                 <i class="bi bi-info-circle text-primary"></i>
-                <span class="card-title">Thông tin văn bản</span>
+                <span class="card-title">Thông tin bổ sung</span>
             </div>
-            <div class="card-body p-0">
-                <table class="detail-tbl">
-                    <tr>
-                        <th class="detail-lbl">Số văn bản</th>
-                        <td class="detail-val" style="font-weight:700;font-size:16px;">@(Model.STT1 ?? Model.STT.ToString())</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Ngày đến</th>
-                        <td class="detail-val">@Model.NgayDen.ToString("dd/MM/yyyy")</td>
-                    </tr>
+            <div class="card-body">
+                <dl class="dl-grid">
+                    <div><dt>Nhóm văn bản</dt><dd>@(string.IsNullOrEmpty(Model.TenNCV) ? "—" : Model.TenNCV)</dd></div>
+                    <div><dt>Lãnh đạo chỉ đạo</dt><dd>@(string.IsNullOrEmpty(Model.TenLDXem) ? "—" : Model.TenLDXem)</dd></div>
+                    <div><dt>Ngày giao</dt><dd class="mono">@(Model.NgayGiao?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+                    <div><dt>Đơn vị báo hoàn thành</dt><dd>
+                        @if (Model.NgayHT.HasValue)
+                        {
+                            bool late = Model.NgayHT > Model.NgayYCHT;
+                            <span style="color:@(late ? "var(--danger)" : "var(--success)");font-weight:600;">@Model.NgayHT!.Value.ToString("dd/MM/yyyy HH:mm") — @(late ? "Trễ hạn" : "Đúng hạn")</span>
+                        }
+                        else { <span class="text-muted">Chưa báo</span> }
+                    </dd></div>
+                    <div><dt>Văn thư xác nhận hoàn thành</dt><dd>
+                        @if (daXNHT)
+                        {
+                            <span style="color:var(--success);font-weight:600;"><i class="bi bi-patch-check-fill me-1"></i>@Model.NgayXNHTCV!.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            @if (!string.IsNullOrEmpty(Model.TenNVXNHT)) { <span class="text-muted fs-12"> — @Model.TenNVXNHT</span> }
+                        }
+                        else { <span class="text-muted">Chưa xác nhận</span> }
+                    </dd></div>
                     @if (!string.IsNullOrEmpty(Model.MSCVDi))
                     {
-                        <tr>
-                            <th class="detail-lbl">Văn bản đi liên quan</th>
-                            <td class="detail-val">
-                                <a asp-controller="CongVanDi" asp-action="ChiTiet" asp-route-id="@Model.MSCVDi?.Trim()"
-                                   style="color:var(--primary);">
-                                    <i class="bi bi-send-fill me-1"></i>Xem văn bản đi gốc — @Model.MSCVDi?.Trim()
-                                </a>
-                            </td>
-                        </tr>
+                        <div><dt>Văn bản đi liên quan</dt><dd><a asp-controller="CongVanDi" asp-action="ChiTiet" asp-route-id="@Model.MSCVDi?.Trim()"><i class="bi bi-send-fill me-1"></i>Xem văn bản đi gốc</a></dd></div>
                     }
-                    <tr>
-                        <th class="detail-lbl">Cơ quan phát hành</th>
-                        <td class="detail-val">@Model.TenCQ</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Ngày ban hành</th>
-                        <td class="detail-val">@Model.NgayBanHanh.ToString("dd/MM/yyyy")</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Loại văn bản</th>
-                        <td class="detail-val">@Model.TenLVB</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Nhóm văn bản</th>
-                        <td class="detail-val">@Model.TenNCV</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Người ký</th>
-                        <td class="detail-val">@Model.NguoiKy</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Trích yếu</th>
-                        <td class="detail-val" style="font-weight:600;">@Model.TrichYeu</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Lãnh đạo chỉ đạo</th>
-                        <td class="detail-val">@Model.TenLDXem</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Ngày giao</th>
-                        <td class="detail-val">@Model.NgayGiao?.ToString("dd/MM/yyyy")</td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Hạn xử lý</th>
-                        <td class="detail-val" style="font-weight:@(quaHan?"700":"400");color:@(quaHan?"var(--danger)":"inherit");">
-                            @Model.NgayYCHT?.ToString("dd/MM/yyyy")
-                            @if (quaHan) { <span style="font-size:12.5px;"> — Quá hạn</span> }
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Ngày hoàn thành (phòng báo)</th>
-                        <td class="detail-val">
-                            @if (Model.NgayHT.HasValue)
-                            {
-                                bool late = Model.NgayHT > Model.NgayYCHT;
-                                <span style="color:@(late ? "var(--danger)" : "var(--success)");font-weight:600;">
-                                    @Model.NgayHT!.Value.ToString("dd/MM/yyyy HH:mm") — @(late ? "Trễ hạn" : "Đúng hạn")
-                                </span>
-                            }
-                            else { <span style="color:var(--muted);">Chưa báo hoàn thành</span> }
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Ngày xác nhận hoàn thành (văn thư)</th>
-                        <td class="detail-val">
-                            @if (daXNHT)
-                            {
-                                <span style="color:var(--success);font-weight:600;">
-                                    <i class="bi bi-patch-check-fill me-1"></i>
-                                    @Model.NgayXNHTCV!.Value.ToString("dd/MM/yyyy HH:mm")
-                                </span>
-                                @if (!string.IsNullOrEmpty(Model.TenNVXNHT))
-                                {
-                                    <span style="color:var(--muted);font-size:12.5px;margin-left:8px;">— @Model.TenNVXNHT</span>
-                                }
-                            }
-                            else { <span style="color:var(--muted);">Chưa xác nhận</span> }
-                        </td>
-                    </tr>
                     @if (!string.IsNullOrEmpty(Model.GhiChu))
                     {
-                        <tr>
-                            <th class="detail-lbl">Ghi chú</th>
-                            <td class="detail-val" style="color:var(--muted);">@Model.GhiChu</td>
-                        </tr>
+                        <div class="full"><dt>Ghi chú</dt><dd style="white-space:pre-line;">@Model.GhiChu</dd></div>
                     }
-                </table>
-            </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="card-header">
-                <i class="bi bi-diagram-3 text-info"></i>
-                <span class="card-title">Phân công xử lý</span>
-            </div>
-            <div class="card-body p-0">
-                <table class="detail-tbl">
-                    <tr>
-                        <th class="detail-lbl">Đơn vị xử lý chính</th>
-                        <td class="detail-val">
-                            @if (!string.IsNullOrEmpty(Model.TenDVXL))
-                            {
-                                <span class="sbadge sbadge-primary"><i class="bi bi-building"></i>@Model.TenDVXL</span>
-                            }
-                            else { <span style="color:var(--muted);">Chưa phân công</span> }
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Đơn vị phối hợp</th>
-                        <td class="detail-val">
-                            @if (dvPhoiHop.Any())
-                            {
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var dv in dvPhoiHop)
-                                    {
-                                        <span class="sbadge sbadge-info"><i class="bi bi-building"></i>@dv.TenDV</span>
-                                    }
-                                </div>
-                            }
-                            else { <span style="color:var(--muted);">Không có</span> }
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="detail-lbl">Email thông báo</th>
-                        <td class="detail-val">
-                            @if (Model.NgayGuiEmail.HasValue)
-                            {
-                                <span style="color:var(--success);font-weight:600;">
-                                    <i class="bi bi-envelope-check-fill me-1"></i>
-                                    Đã gửi lúc @Model.NgayGuiEmail.Value.ToString("dd/MM/yyyy HH:mm")
-                                </span>
-                                @if (!string.IsNullOrEmpty(Model.TenNVGuiEmail))
-                                {
-                                    <span style="color:var(--muted);font-size:12.5px;margin-left:8px;">— @Model.TenNVGuiEmail</span>
-                                }
-                                @if (coTheGuiEmail)
-                                {
-                                    <button type="button" class="btn btn-xs btn-outline-secondary ms-2" onclick="guiEmailThongBao()">
-                                        <i class="bi bi-arrow-repeat me-1"></i>Gửi lại
-                                    </button>
-                                }
-                            }
-                            else if (!Model.MaDVXL.HasValue)
-                            {
-                                <span style="color:var(--muted);">Chưa gán đơn vị xử lý — không thể gửi</span>
-                            }
-                            else if (coTheGuiEmail)
-                            {
-                                <button type="button" class="btn btn-xs btn-primary" onclick="guiEmailThongBao()">
-                                    <i class="bi bi-envelope me-1"></i>Gửi email thông báo
-                                </button>
-                                <span id="guiEmailMsg" style="font-size:12.5px;margin-left:8px;"></span>
-                            }
-                            else
-                            {
-                                <span style="color:var(--muted);">Chưa gửi</span>
-                            }
-                        </td>
-                    </tr>
-                </table>
+                </dl>
             </div>
         </div>
 
@@ -816,6 +685,79 @@
 
     <!-- ══ CỘT PHẢI ══ -->
     <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-diagram-3 text-info"></i>
+                <span class="card-title">Phân công xử lý</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="detail-tbl stack">
+                    <tr>
+                        <th class="detail-lbl">Đơn vị xử lý chính</th>
+                        <td class="detail-val">
+                            @if (!string.IsNullOrEmpty(Model.TenDVXL))
+                            {
+                                <span class="sbadge sbadge-primary"><i class="bi bi-building"></i>@Model.TenDVXL</span>
+                            }
+                            else { <span style="color:var(--muted);">Chưa phân công</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Đơn vị phối hợp</th>
+                        <td class="detail-val">
+                            @if (dvPhoiHop.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var dv in dvPhoiHop)
+                                    {
+                                        <span class="sbadge sbadge-info"><i class="bi bi-building"></i>@dv.TenDV</span>
+                                    }
+                                </div>
+                            }
+                            else { <span style="color:var(--muted);">Không có</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="detail-lbl">Email thông báo</th>
+                        <td class="detail-val">
+                            @if (Model.NgayGuiEmail.HasValue)
+                            {
+                                <span style="color:var(--success);font-weight:600;">
+                                    <i class="bi bi-envelope-check-fill me-1"></i>
+                                    Đã gửi lúc @Model.NgayGuiEmail.Value.ToString("dd/MM/yyyy HH:mm")
+                                </span>
+                                @if (!string.IsNullOrEmpty(Model.TenNVGuiEmail))
+                                {
+                                    <span style="color:var(--muted);font-size:12.5px;margin-left:8px;">— @Model.TenNVGuiEmail</span>
+                                }
+                                @if (coTheGuiEmail)
+                                {
+                                    <button type="button" class="btn btn-xs btn-outline-secondary ms-2" onclick="guiEmailThongBao()">
+                                        <i class="bi bi-arrow-repeat me-1"></i>Gửi lại
+                                    </button>
+                                }
+                            }
+                            else if (!Model.MaDVXL.HasValue)
+                            {
+                                <span style="color:var(--muted);">Chưa gán đơn vị xử lý — không thể gửi</span>
+                            }
+                            else if (coTheGuiEmail)
+                            {
+                                <button type="button" class="btn btn-xs btn-primary" onclick="guiEmailThongBao()">
+                                    <i class="bi bi-envelope me-1"></i>Gửi email thông báo
+                                </button>
+                                <span id="guiEmailMsg" style="font-size:12.5px;margin-left:8px;"></span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--muted);">Chưa gửi</span>
+                            }
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <i class="bi bi-paperclip text-secondary"></i>

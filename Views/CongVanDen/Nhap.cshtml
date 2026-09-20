@@ -23,140 +23,143 @@
 <form asp-action="Nhap" method="post" enctype="multipart/form-data" autocomplete="off">
     <input asp-for="CongVanDen.MSCV" type="hidden" />
 
-    <!-- ── BƯỚC 1: Thông tin văn bản ─────────────────────── -->
-    <div class="form-section">
+    <!-- ── 1. Thông tin trên văn bản ───────────────────────── -->
+    <div class="form-section" data-hint="Nhập đúng như trên văn bản gốc nhận được.">
         <div class="form-section-header">
             <span class="step-num">1</span>
             Thông tin văn bản
         </div>
         <div class="form-section-body">
-            <div class="row g-3">
-                <div class="col-sm-6 col-lg-3">
+            <div class="row">
+                <div class="col-12">
+                    <label class="form-label">Trích yếu <span class="form-required">*</span></label>
+                    <textarea asp-for="CongVanDen.TrichYeu" class="form-control" rows="2" placeholder="Ví dụ: V/v tổ chức hội nghị tập huấn công tác..."></textarea>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Cơ quan phát hành <span class="form-required">*</span></label>
+                    <div class="input-group flex-nowrap">
+                        <select asp-for="CongVanDen.MaCQ" id="selCoQuan" class="form-select ts-select">
+                            <option value="">Chọn cơ quan...</option>
+                            @foreach (var cq in Model.DanhSachCoQuan)
+                            { <option value="@cq.MaCQ">@cq.TenCQ</option> }
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" title="Thêm cơ quan mới" onclick="moThemCoQuan()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Loại văn bản <span class="form-required">*</span></label>
+                    <select asp-for="CongVanDen.MaLVB" class="form-select ts-select">
+                        <option value="">Chọn loại...</option>
+                        @foreach (var lv in Model.DanhSachLoaiVB)
+                        { <option value="@lv.MaLVB" data-dungchung="@(lv.DungChung ? "1" : "0")">@lv.TenLVB</option> }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Nhóm văn bản</label>
+                    <select asp-for="CongVanDen.MaNCV" class="form-select ts-select">
+                        <option value="">Không chọn</option>
+                        @foreach (var nc in Model.DanhSachNhomCV)
+                        { <option value="@nc.MaNCV">@nc.TenNCV</option> }
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Số ký hiệu</label>
+                    <input asp-for="CongVanDen.STT1" class="form-control" placeholder="Ví dụ: 123/QĐ-BGD" />
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Ngày ban hành <span class="form-required">*</span></label>
+                    <input asp-for="CongVanDen.NgayBanHanh" type="date" class="form-control" />
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Người ký</label>
+                    <input asp-for="CongVanDen.NguoiKy" class="form-control" placeholder="Họ tên người ký" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 2. Vào sổ ──────────────────────────────────────── -->
+    <div class="form-section" data-hint="Văn bản được ghi vào sổ nào, ngày nào. Số thứ tự tự nhảy theo sổ.">
+        <div class="form-section-header">
+            <span class="step-num">2</span>
+            Vào sổ
+        </div>
+        <div class="form-section-body">
+            <div class="row">
+                <div class="col-md-6 col-xl-4">
                     <label class="form-label">Sổ văn bản <span class="form-required">*</span></label>
                     <select asp-for="CongVanDen.MaSCV" id="selSCV" class="form-select ts-select">
                         @foreach (var s in Model.DanhSachSoCV)
                         { <option value="@s.MaSCV">@s.TenSCV</option> }
                     </select>
                 </div>
-                <div class="col-6 col-sm-3 col-lg-2">
+                <div class="col-md-6 col-xl-4">
                     <label class="form-label">Ngày đến <span class="form-required">*</span></label>
                     <input asp-for="CongVanDen.NgayDen" type="date" class="form-control" />
                 </div>
-                <div class="col-6 col-sm-3 col-lg-2">
-                    <label class="form-label">
-                        STT @if (isNew) { <span class="text-muted fs-12">(tự động)</span> }
-                    </label>
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Số thứ tự @if (isNew) { <span class="text-muted fs-12">(tự động)</span> }</label>
                     <input asp-for="CongVanDen.STT" id="inpSTT" class="form-control" />
-                </div>
-                <div class="col-sm-6 col-lg-2">
-                    <label class="form-label">Số văn bản</label>
-                    <input asp-for="CongVanDen.STT1" class="form-control" placeholder="123/QĐ-BGD" />
-                </div>
-                <div class="col-sm-6 col-lg-3">
-                    <label class="form-label">Ngày ban hành <span class="form-required">*</span></label>
-                    <input asp-for="CongVanDen.NgayBanHanh" type="date" class="form-control" />
-                </div>
-
-                <div class="col-sm-6 col-lg-4">
-                    <label class="form-label">Cơ quan phát hành <span class="form-required">*</span></label>
-                    <div class="input-group">
-                        <select asp-for="CongVanDen.MaCQ" id="selCoQuan" class="form-select ts-select">
-                            <option value="">-- Chọn cơ quan --</option>
-                            @foreach (var cq in Model.DanhSachCoQuan)
-                            { <option value="@cq.MaCQ">@cq.TenCQ</option> }
-                        </select>
-                        <button type="button" class="btn btn-outline-success" title="Thêm cơ quan mới" onclick="moThemCoQuan()">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-lg-4">
-                    <label class="form-label">Loại văn bản <span class="form-required">*</span></label>
-                    <select asp-for="CongVanDen.MaLVB" class="form-select ts-select">
-                        <option value="">-- Chọn loại --</option>
-                        @foreach (var lv in Model.DanhSachLoaiVB)
-                        { <option value="@lv.MaLVB">@lv.TenLVB</option> }
-                    </select>
-                </div>
-                <div class="col-sm-6 col-lg-4">
-                    <label class="form-label">Nhóm văn bản</label>
-                    <select asp-for="CongVanDen.MaNCV" class="form-select ts-select">
-                        <option value="">-- Chọn nhóm --</option>
-                        @foreach (var nc in Model.DanhSachNhomCV)
-                        { <option value="@nc.MaNCV">@nc.TenNCV</option> }
-                    </select>
-                </div>
-
-                <div class="col-sm-4 col-lg-3">
-                    <label class="form-label">Người ký</label>
-                    <input asp-for="CongVanDen.NguoiKy" class="form-control" />
-                </div>
-                <div class="col-sm-8 col-lg-9">
-                    <label class="form-label">Trích yếu <span class="form-required">*</span></label>
-                    <textarea asp-for="CongVanDen.TrichYeu" class="form-control" rows="2" placeholder="Nội dung tóm tắt văn bản..."></textarea>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── BƯỚC 2: Phân công xử lý ──────────────────────── -->
-    <div class="form-section">
+    <!-- ── 3. Giao xử lý ─────────────────────────────────── -->
+    <div class="form-section" data-hint="Giao cho đơn vị nào chủ trì, đơn vị nào phối hợp. Có thể bỏ trống và giao sau.">
         <div class="form-section-header">
-            <span class="step-num">2</span>
-            Phân công xử lý
+            <span class="step-num">3</span>
+            Giao xử lý
         </div>
         <div class="form-section-body">
-            <div class="row g-3">
-                <div class="col-sm-6 col-lg-4">
-                    <label class="form-label">Bộ phận chủ trì xử lý</label>
+            <div class="row">
+                <div class="col-md-6 col-xl-4">
+                    <label class="form-label">Đơn vị chủ trì xử lý</label>
                     <select asp-for="CongVanDen.MaDVXL" class="form-select ts-select">
-                        <option value="0">-- Chọn --</option>
+                        <option value="0">Chưa giao</option>
                         @foreach (var dv in Model.DanhSachDonVi)
                         { <option value="@dv.MaDV">@dv.TenDV</option> }
                     </select>
                 </div>
-                <div class="col-sm-6 col-lg-4">
+                <div class="col-md-6 col-xl-4">
                     <label class="form-label">Ban Giám Hiệu chỉ đạo</label>
                     <select asp-for="CongVanDen.MaLDXem" class="form-select ts-select">
-                        <option value="0">-- Chọn --</option>
+                        <option value="0">Chưa chọn</option>
                         @foreach (var ld in Model.DanhSachLanhDao)
                         { <option value="@ld.MaNV">@ld.HoTen</option> }
                     </select>
                 </div>
-                <div class="col-6 col-lg-2">
+                <div class="col-md-3 col-xl-2">
                     <label class="form-label">Ngày giao</label>
                     <input asp-for="CongVanDen.NgayGiao" type="date" class="form-control" />
                 </div>
-                <div class="col-6 col-lg-2">
+                <div class="col-md-3 col-xl-2">
                     <label class="form-label">Hạn hoàn thành</label>
                     <input asp-for="CongVanDen.NgayYCHT" type="date" class="form-control" />
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Bộ phận phối hợp</label>
-                    <div class="d-flex gap-2 flex-wrap mb-2">
-                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaDonVi()">
-                            <i class="bi bi-check-all me-1"></i>Tất cả đơn vị
-                        </button>
-                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaKhoa()">
-                            <i class="bi bi-check-all me-1"></i>Tất cả các khoa
-                        </button>
-                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaPhong()">
-                            <i class="bi bi-check-all me-1"></i>Tất cả phòng/ban/TT
-                        </button>
-                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="boChonTatCa()">
-                            <i class="bi bi-x-circle me-1"></i>Bỏ chọn tất cả
-                        </button>
+                    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
+                        <label class="form-label mb-0">Đơn vị phối hợp — <span id="pcDem" class="text-primary fw-700">0</span> đã chọn</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <input id="pcTim" class="form-control form-control-sm" style="width:200px;" placeholder="Tìm đơn vị..." oninput="pcLoc()" />
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaDonVi()">Tất cả</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaKhoa()">Các khoa</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="chonTatCaPhong()">Phòng/ban/TT</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="boChonTatCa()">Bỏ chọn</button>
+                        </div>
                     </div>
-                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2" id="listDVPhoiHop"
-                         style="max-height:230px;overflow-y:auto;padding:10px;background:#f8f9fb;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2" id="listDVPhoiHop"
+                         style="max-height:240px;overflow-y:auto;padding:10px;background:#F8FAFC;border:1px solid var(--border);border-radius:10px;margin:0;">
                         @foreach (var dv in Model.DanhSachDonVi)
                         {
-                            <div class="col">
+                            <div class="col pc-item" data-ten="@dv.TenDV.ToLower()">
                                 <div class="form-check">
                                     <input class="form-check-input dv-phoihop" type="checkbox"
                                            name="dvPhoiHop" value="@dv.MaDV"
-                                           id="dv_@dv.MaDV"
+                                           id="dv_@dv.MaDV" onchange="pcDem()"
                                            data-loai="@(dv.LoaiDV ?? "")"
                                            @(Model.DanhSachDVPhoiHop.Contains(dv.MaDV) ? "checked" : "") />
                                     <label class="form-check-label" for="dv_@dv.MaDV" style="font-size:13px;">@dv.TenDV</label>
@@ -169,10 +172,27 @@
         </div>
     </div>
 
-    <!-- ── BƯỚC 3: Ghi chú & Đính kèm ──────────────────── -->
-    <div class="form-section">
+    <!-- ── 4. Ai được xem ────────────────────────────────── -->
+    <div class="form-section" data-hint="Mặc định chỉ người được chuyển xử lý mới thấy văn bản. Bật nếu đây là văn bản phổ biến toàn trường.">
         <div class="form-section-header">
-            <span class="step-num">3</span>
+            <span class="step-num">4</span>
+            Ai được xem
+        </div>
+        <div class="form-section-body">
+            <label class="opt-card" for="chkDungChung">
+                <input asp-for="CongVanDen.DungChung" class="form-check-input" type="checkbox" id="chkDungChung" />
+                <div>
+                    <div class="opt-title"><i class="bi bi-people-fill me-1 text-primary"></i>Văn bản dùng chung nội bộ</div>
+                    <div class="opt-desc">Mọi viên chức trong trường đều xem được — dành cho quyết định, thông báo, biên bản, kế hoạch... Tự bật theo loại văn bản bạn chọn, vẫn sửa tay được.</div>
+                </div>
+            </label>
+        </div>
+    </div>
+
+    <!-- ── BƯỚC 3: Ghi chú & Đính kèm ──────────────────── -->
+    <div class="form-section" data-hint="Đính kèm bản scan hoặc file văn bản. Có thể kéo thả nhiều file cùng lúc.">
+        <div class="form-section-header">
+            <span class="step-num">5</span>
             Ghi chú &amp; Đính kèm
         </div>
         <div class="form-section-body">
@@ -428,7 +448,14 @@ function setDVByLoai(loais, checked) {
     document.querySelectorAll('.dv-phoihop').forEach(cb => {
         if (loais === null || loais.includes(cb.dataset.loai)) cb.checked = checked;
     });
+    if (typeof pcDem === 'function') pcDem();
 }
+function pcLoc() {
+    var tu = (document.getElementById('pcTim').value || '').trim().toLowerCase();
+    document.querySelectorAll('#listDVPhoiHop .pc-item').forEach(function (e) { e.style.display = (!tu || e.dataset.ten.indexOf(tu) !== -1) ? '' : 'none'; });
+}
+function pcDem() { var el = document.getElementById('pcDem'); if (el) el.textContent = document.querySelectorAll('.dv-phoihop:checked').length; }
+document.addEventListener('DOMContentLoaded', pcDem);
 function chonTatCaDonVi() { setDVByLoai(null, true); }
 function boChonTatCa()    { setDVByLoai(null, false); }
 function chonTatCaKhoa()  { setDVByLoai(['K'], true); }

@@ -56,8 +56,29 @@ public class VanBanNoiBoController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Nhap(int? id)
+    public async Task<IActionResult> Nhap(int? id, int? duThao)
     {
+        if (duThao.HasValue && !id.HasValue)
+        {
+            // Ban hành NỘI BỘ từ dự thảo đã duyệt (hoặc văn thư cấp 2 ban hành ngay): điền sẵn nội dung từ dự thảo.
+            var dt = await _db.GetDuThaoAsync(duThao.Value);
+            if (dt == null || dt.TrangThai == DuThao.DaBanHanh || dt.PhamVi != 2) return NotFound();
+            if (!await CoTheQuanLyAsync(dt.MaDVSoan)) return Forbid();
+            var dongGiu = await _db.GetDongDangChoAsync(VanBanXuLy.LoaiDuThao, dt.ID.ToString(), MaNV);
+            if (dongGiu == null && dt.MaNVSoan != MaNV && !CoQuyen("VanBanNoiBo.QuanLyTatCa")) return Forbid();
+            ViewBag.DuThaoId = dt.ID;
+            ViewBag.DuThaoFiles = await _db.GetFileDuThaoAsync(dt.ID);
+            return View(new VanBanNoiBoFormViewModel
+            {
+                VanBanNoiBo = new VanBanNoiBo
+                {
+                    MaDV = dt.MaDVSoan, NgayBanHanh = DateTime.Today, TrangThai = 1, TieuDe = dt.TrichYeu,
+                    NoiDung = dt.NoiDungXuLy, MaNVKy = dt.MaNVKy, NguoiKy = dt.TenNVKy
+                },
+                DanhSachNhanVien = await _db.GetNhanVienAsync(dt.MaDVSoan),
+                DanhSachMauSo = await _db.GetVanBanNoiBoMauSoAsync(dt.MaDVSoan)
+            });
+        }
         if (id.HasValue)
         {
             var v = await _db.GetVanBanNoiBoByIdAsync(id.Value);
@@ -110,7 +131,7 @@ public class VanBanNoiBoController : BaseController
     }
 
     [HttpPost]
-    public async Task<IActionResult> Nhap(VanBanNoiBoFormViewModel vm, IFormFile? file)
+    public async Task<IActionResult> Nhap(VanBanNoiBoFormViewModel vm, IFormFile? file, int? duThaoId)
     {
         var v = vm.VanBanNoiBo;
         bool isNew = v.ID == 0;
@@ -155,6 +176,14 @@ public class VanBanNoiBoController : BaseController
         {
             var rel = await _fileSvc.SaveAsync(file, "vanbannoibo");
             await _db.ThemVanBanNoiBoFileAsync(v.ID, file.FileName, rel);
+        }
+
+        if (duThaoId.HasValue && isNew)
+        {
+            // Dùng file của dự thảo làm file đính kèm rồi đóng dự thảo (đã ban hành nội bộ).
+            foreach (var f in await _db.GetFileDuThaoAsync(duThaoId.Value))
+                await _db.ThemVanBanNoiBoFileAsync(v.ID, f.TenFile, f.DuongDan);
+            await _db.DanhDauDuThaoDaBanHanhNoiBoAsync(duThaoId.Value, v.ID, MaNV);
         }
 
         TempData["Success"] = "Lưu thành công!";

@@ -10,7 +10,11 @@ public class AccountController : Controller
     public AccountController(DbService db) => _db = db;
 
     [HttpGet]
-    public IActionResult Login() => View();
+    public async Task<IActionResult> Login(int? nam, int? thang)
+    {
+        await NapLichCongKhaiAsync(nam, thang);
+        return View();
+    }
 
     [HttpPost]
     public async Task<IActionResult> Login(LoginViewModel model)
@@ -19,6 +23,7 @@ public class AccountController : Controller
         if (nv == null)
         {
             ModelState.AddModelError("", "Tên đăng nhập hoặc mật khẩu không đúng.");
+            await NapLichCongKhaiAsync(null, null);
             return View(model);
         }
 
@@ -37,7 +42,8 @@ public class AccountController : Controller
         HttpContext.Session.SetString("login-LaLanhDaoDonVi", laLanhDaoDonVi ? "1" : "0");
         HttpContext.Session.SetString("login-TinhNangMoiCongKhai", tinhNangMoiCongKhai ? "1" : "0");
 
-        return RedirectToAction("Index", "CongVanDen");
+        // Luôn vào trang Tổng quan (không nhảy thẳng vào sổ văn bản đến).
+        return RedirectToAction("Index", "Home");
     }
 
     public IActionResult Logout()
@@ -77,6 +83,36 @@ public class AccountController : Controller
 
         TempData["Success"] = "Đổi mật khẩu thành công!";
         return RedirectToAction("DoiMatKhau");
+    }
+
+    // Lịch làm việc + thông báo hiện ngay trên trang Đăng nhập (không cần đăng nhập mới thấy) — cùng
+    // phạm vi dữ liệu với trang /cong-khai (xem PublicController). "nam"/"thang" cho phép bấm chuyển
+    // tháng ngay trên khối lịch dạng lưới mà không cần đăng nhập.
+    private async Task NapLichCongKhaiAsync(int? nam, int? thang)
+    {
+        // Cùng công tắc "công bố tính năng mới" với trang /cong-khai — chưa bật thì ẩn cả khối lịch.
+        ViewBag.CongKhaiMo = await _db.GetTinhNangMoiCongKhaiAsync();
+        if (ViewBag.CongKhaiMo != true) return;
+
+        var today = DateTime.Today;
+        // Chặn tham số URL bậy (thang=13, nam=0...) — nếu không new DateTime() ném exception → 500.
+        int year = nam is >= 2000 and <= 2100 ? nam.Value : today.Year;
+        int month = thang is >= 1 and <= 12 ? thang.Value : today.Month;
+        var firstOfMonth = new DateTime(year, month, 1);
+        var lastOfMonth = firstOfMonth.AddMonths(1).AddDays(-1);
+        int leadingDays = (int)firstOfMonth.DayOfWeek == 0 ? 6 : (int)firstOfMonth.DayOfWeek - 1;
+        var gridStart = firstOfMonth.AddDays(-leadingDays);
+        int trailingDays = (int)lastOfMonth.DayOfWeek == 0 ? 0 : 7 - (int)lastOfMonth.DayOfWeek;
+        var gridEnd = lastOfMonth.AddDays(trailingDays);
+
+        ViewBag.LichNam = year;
+        ViewBag.LichThang = month;
+        ViewBag.LichGridStart = gridStart;
+        ViewBag.LichGridEnd = gridEnd;
+        ViewBag.LichDanhSach = await _db.GetLichLamViecTheoKhoangNgayAsync(gridStart, gridEnd);
+        // Riêng cho khối "Danh sách" (agenda) — khoảng thời gian tới thay vì trọn lưới tháng đang xem.
+        ViewBag.LichAgenda = await _db.GetLichLamViecTheoKhoangNgayAsync(today.AddDays(-1), today.AddDays(30));
+        ViewBag.ThongBaoCongKhai = await _db.GetThongBaoCongKhaiAsync();
     }
 
     private void SetViewBag()

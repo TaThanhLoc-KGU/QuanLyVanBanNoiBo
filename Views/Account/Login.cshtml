@@ -1,11 +1,42 @@
 @model CongVan.Models.LoginViewModel
-@{ Layout = null; }
+@using CongVan.Models
+@{
+    Layout = null;
+    var lichNam = ViewBag.LichNam as int? ?? DateTime.Today.Year;
+    var lichThang = ViewBag.LichThang as int? ?? DateTime.Today.Month;
+    var gridStart = ViewBag.LichGridStart as DateTime? ?? DateTime.Today;
+    var gridEnd = ViewBag.LichGridEnd as DateTime? ?? DateTime.Today;
+    var lichGrid = ViewBag.LichDanhSach as List<LichLamViec> ?? new();
+    var lichAgenda = ViewBag.LichAgenda as List<LichLamViec> ?? new();
+    var thongBaoCK = ViewBag.ThongBaoCongKhai as List<ThongBaoNoiBo> ?? new();
+    var thisMonth = new DateTime(lichNam, lichThang, 1);
+    var prevMonth = thisMonth.AddMonths(-1);
+    var nextMonth = thisMonth.AddMonths(1);
+    var today = DateTime.Today;
+    var byDay = lichGrid.GroupBy(l => l.ThoiGianBatDau.Date).ToDictionary(g => g.Key, g => g.OrderBy(l => l.ThoiGianBatDau).ToList());
+    var agendaByDay = lichAgenda.GroupBy(l => l.ThoiGianBatDau.Date).OrderBy(g => g.Key).ToList();
+    string[] thu = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
+
+    string Phu(LichLamViec ev) => ev.LaLichCongTac
+        ? (ev.ToanTruong ? "Công tác toàn trường" : $"Công tác — {ev.TenDV}")
+        : (ev.TenNVLanhDao ?? "");
+
+    // Dữ liệu cho JS: bấm 1 ngày trên lưới lịch hiện chi tiết ngày đó ngay bên dưới, không cần tải
+    // lại trang. JsonSerializer mặc định tự escape ký tự nguy hiểm (<, >, &...) an toàn khi nhúng
+    // thẳng vào <script>.
+    var lpEventsJson = System.Text.Json.JsonSerializer.Serialize(
+        byDay.ToDictionary(
+            kv => kv.Key.ToString("yyyy-MM-dd"),
+            kv => kv.Value.Select(ev => new { time = ev.ThoiGianBatDau.ToString("HH:mm"), title = ev.TieuDe, sub = Phu(ev) }).ToList()
+        ));
+}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đăng nhập — VNKGU Văn bản</title>
+    <link rel="icon" type="image/png" href="/img/favicon-vnkgu.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap&subset=vietnamese" />
@@ -13,14 +44,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <style>
         :root {
-            --primary: #0B4A87;
-            --primary-dark: #073761;
+            --primary: #1B6580;
+            --primary-dark: #124659;
         }
         *, *::before, *::after { box-sizing: border-box; }
         body {
             margin: 0;
             min-height: 100vh;
-            background: linear-gradient(150deg, #071A2E 0%, #0B2C4D 55%, #0B4A87 100%);
+            background:
+                linear-gradient(160deg, rgba(12,52,68,.84) 0%, rgba(19,75,96,.66) 50%, rgba(27,101,128,.42) 100%),
+                url('/img/campus.jpg') center / cover no-repeat fixed #134B60;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -32,27 +65,19 @@
             max-width: 408px;
             background: #fff;
             border-radius: 12px;
-            border-top: 4px solid #C0392B;
-            box-shadow: 0 24px 64px rgba(0,0,0,.24);
+            border-top: 4px solid #DBA20A;
+            box-shadow: 0 24px 64px rgba(0,0,0,.30);
             overflow: hidden;
         }
         .login-top {
-            background: linear-gradient(135deg, #0B2C4D, #0B4A87);
-            padding: 34px 36px 28px;
+            background: #fff;
+            padding: 30px 36px 6px;
             text-align: center;
-            color: #fff;
+            color: #134B60;
         }
-        .login-icon {
-            width: 60px; height: 60px;
-            background: rgba(255,255,255,.16);
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 25px;
-            margin: 0 auto 15px;
-            border: 2px solid rgba(255,255,255,.28);
-        }
-        .login-title { font-size: 21px; font-weight: 800; margin: 0 0 4px; }
-        .login-sub   { font-size: 13px; opacity: .85; margin: 0; }
+        .login-logo { height: 118px; width: auto; display: block; margin: 0 auto 14px; }
+        .login-title { font-size: 19px; font-weight: 800; margin: 0 0 3px; letter-spacing: -.01em; }
+        .login-sub   { font-size: 13px; color: #5F7686; margin: 0; }
         .login-body  { padding: 30px 34px 34px; }
 
         .form-label { font-size: 13px; font-weight: 700; color: #33475B; margin-bottom: 7px; }
@@ -65,8 +90,8 @@
             transition: border-color .15s, box-shadow .15s;
         }
         .form-control:focus {
-            border-color: #0B4A87;
-            box-shadow: 0 0 0 3px rgba(11,74,135,.14);
+            border-color: #1B6580;
+            box-shadow: 0 0 0 3px rgba(27,101,128,.14);
         }
         .pwd-wrap { position: relative; }
         .pwd-wrap .form-control { padding-right: 44px; }
@@ -79,12 +104,12 @@
 
         .btn-login {
             width: 100%; padding: 13px;
-            background: #0B4A87; border: none; border-radius: 7px;
+            background: #1B6580; border: none; border-radius: 7px;
             color: #fff; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: background .15s, transform .1s;
             margin-top: 8px;
         }
-        .btn-login:hover  { background: #073761; }
+        .btn-login:hover  { background: #124659; }
         .btn-login:active { transform: scale(.99); }
 
         .alert-err {
@@ -97,17 +122,86 @@
             text-align: center; font-size: 12px; color: #8CA0B3;
             padding: 0 34px 22px;
         }
+
+        /* ═══ Khối lịch làm việc bên phải (trang chủ Đăng nhập) ═══ */
+        .page-wrap { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1020px; }
+        .lich-panel {
+            width: 100%; max-width: 560px;
+            background: #fff; border-radius: 12px; box-shadow: 0 24px 64px rgba(0,0,0,.24);
+            overflow: hidden; display: flex; flex-direction: column;
+        }
+        .lp-head {
+            background: linear-gradient(135deg, #134B60, #1B6580); color: #fff;
+            padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .lp-head-title { font-size: 15.5px; font-weight: 800; margin: 0; }
+        .lp-toggle { display: flex; background: rgba(255,255,255,.14); border-radius: 8px; padding: 3px; }
+        .lp-toggle button {
+            border: none; background: transparent; color: #fff; opacity: .75;
+            font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+        }
+        .lp-toggle button.active { background: #fff; color: #1B6580; opacity: 1; }
+        .lp-body { padding: 16px 20px 20px; max-height: 480px; overflow-y: auto; }
+
+        .lp-tb-item { border-left: 3px solid #1B6580; padding: 8px 12px; margin-bottom: 8px; background: #F8FAFC; border-radius: 0 7px 7px 0; }
+        .lp-tb-item.muc-2 { border-color: #E08E0B; }
+        .lp-tb-item.muc-3 { border-color: #C0392B; }
+        .lp-tb-title { font-weight: 700; font-size: 13px; }
+        .lp-tb-noidung { font-size: 12px; color: #4A5A6B; margin-top: 2px; white-space: pre-line; }
+
+        /* -- Chế độ lưới (calendar) -- */
+        .lp-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .lp-cal-nav a { color: #1B6580; text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+        .lp-cal-nav a:hover { background: #EAF0F7; }
+        .lp-cal-nav strong { font-size: 13.5px; }
+        .lp-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .lp-cal-dow { text-align: center; font-size: 10.5px; font-weight: 700; color: #8CA0B3; padding-bottom: 4px; }
+        .lp-cal-cell {
+            aspect-ratio: 1; border-radius: 6px; padding: 3px 4px; font-size: 11px; cursor: default;
+            background: #F8FAFC; color: #1F2D3D; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        }
+        .lp-cal-cell.ngoai-thang { color: #C8D2DC; background: transparent; }
+        .lp-cal-cell.homnay { background: #1B6580; color: #fff; font-weight: 800; }
+        .lp-cal-cell.co-lich { cursor: pointer; }
+        .lp-cal-cell.co-lich:hover { box-shadow: 0 0 0 2px #1B6580 inset; }
+        .lp-cal-dots { display: flex; gap: 2px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+        .lp-dot { width: 5px; height: 5px; border-radius: 50%; background: #1B6580; }
+        .lp-cal-cell.homnay .lp-dot { background: #fff; }
+        .lp-day-detail { margin-top: 12px; border-top: 1px dashed #DCE3EC; padding-top: 10px; display: none; }
+        .lp-day-detail.show { display: block; }
+        .lp-day-detail-title { font-size: 12px; font-weight: 800; color: #1B6580; margin-bottom: 6px; }
+
+        /* -- Chế độ danh sách (agenda) -- */
+        .lp-day-group { margin-bottom: 12px; }
+        .lp-day-head { font-size: 11.5px; font-weight: 800; color: #1B6580; text-transform: uppercase; padding-bottom: 4px; margin-bottom: 6px; border-bottom: 2px solid #EAF0F7; }
+        .lp-ev { display: flex; gap: 10px; padding: 5px 2px; }
+        .lp-ev-time { flex: 0 0 42px; font-size: 11.5px; font-weight: 700; color: #1B6580; }
+        .lp-ev-title { font-size: 12.5px; font-weight: 600; }
+        .lp-ev-sub { font-size: 11px; color: #8CA0B3; }
+
+        .lp-gg-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            border-top: 1px solid #EAF0F7; padding: 12px 20px; font-size: 12.5px; font-weight: 700;
+            color: #1F2D3D; text-decoration: none; background: #F8FAFC;
+        }
+        .lp-gg-btn:hover { background: #EAF0F7; color: #1F2D3D; }
+        .lp-empty { font-size: 12.5px; color: #8CA0B3; padding: 6px 2px; }
+
+        @@media (max-width: 991px) {
+            .lich-panel { order: 2; }
+            .login-box { order: 1; }
+        }
     </style>
 </head>
 <body>
 
+<div class="page-wrap">
 <div class="login-box">
     <div class="login-top">
-        <div class="login-icon"><i class="bi bi-envelope-paper-fill"></i></div>
-        <div class="login-title">Quản lý Văn bản</div>
+        <img class="login-logo" src="/img/logo-vnkgu.png" alt="Trường Đại học Kiên Giang" />
+        <h1 class="login-title">Quản lý văn bản &amp; điều hành</h1>
         <p class="login-sub">Trường Đại học Kiên Giang</p>
     </div>
-
     <div class="login-body">
         @if (!ViewData.ModelState.IsValid || ViewBag.Error != null)
         {
@@ -140,9 +234,141 @@
     </div>
 
     <div class="login-footer">
-        © @DateTime.Now.Year VNKGU &nbsp;·&nbsp; Hệ thống nội bộ
+        © @DateTime.Now.Year VNKGU &nbsp;·&nbsp; Hệ thống nội bộ<br />
+        @if (ViewBag.CongKhaiMo == true)
+        {
+            <a href="/cong-khai" style="color:#1B6580;">
+                <i class="bi bi-calendar2-week"></i> Xem lịch làm việc &amp; thông báo (không cần đăng nhập)
+            </a>
+        }
     </div>
 </div>
+
+@if (ViewBag.CongKhaiMo == true)
+{
+<div class="lich-panel">
+    <div class="lp-head">
+        <p class="lp-head-title"><i class="bi bi-calendar2-week-fill me-1"></i>Lịch làm việc</p>
+        <div class="lp-toggle">
+            <button type="button" id="btnLpCal" class="active" onclick="lpChonCheDo('cal')">Lịch</button>
+            <button type="button" id="btnLpList" onclick="lpChonCheDo('list')">Danh sách</button>
+        </div>
+    </div>
+    <div class="lp-body">
+        @if (thongBaoCK.Any())
+        {
+            foreach (var tb in thongBaoCK.Take(3))
+            {
+                <div class="lp-tb-item muc-@tb.MucDo">
+                    <div class="lp-tb-title"><i class="bi bi-megaphone-fill me-1"></i>@tb.TieuDe</div>
+                    <div class="lp-tb-noidung">@tb.NoiDung</div>
+                </div>
+            }
+        }
+
+        <div id="lpCheDoCal">
+            <div class="lp-cal-nav">
+                <a href="/Account/Login?nam=@prevMonth.Year&thang=@prevMonth.Month"><i class="bi bi-chevron-left"></i></a>
+                <strong>Tháng @lichThang/@lichNam</strong>
+                <a href="/Account/Login?nam=@nextMonth.Year&thang=@nextMonth.Month"><i class="bi bi-chevron-right"></i></a>
+            </div>
+            <div class="lp-cal-grid">
+                @foreach (var t in thu) { <div class="lp-cal-dow">@t</div> }
+                @{ var d = gridStart; }
+                @while (d <= gridEnd)
+                {
+                    var dCopy = d;
+                    bool ngoaiThang = dCopy.Month != lichThang;
+                    bool laHomNay = dCopy == today;
+                    var soLuong = byDay.TryGetValue(dCopy, out var evs) ? evs.Count : 0;
+                    <div class="lp-cal-cell @(ngoaiThang ? "ngoai-thang" : "") @(laHomNay ? "homnay" : "") @(soLuong > 0 ? "co-lich" : "")"
+                         onclick="lpXemNgay('@dCopy.ToString("yyyy-MM-dd")')">
+                        <span>@dCopy.Day</span>
+                        @if (soLuong > 0)
+                        {
+                            <div class="lp-cal-dots">
+                                @for (int i = 0; i < Math.Min(soLuong, 4); i++) { <span class="lp-dot"></span> }
+                            </div>
+                        }
+                    </div>
+                    d = d.AddDays(1);
+                }
+            </div>
+            <div id="lpDayDetail" class="lp-day-detail">
+                <div class="lp-day-detail-title" id="lpDayDetailTitle"></div>
+                <div id="lpDayDetailBody"></div>
+            </div>
+        </div>
+
+        <div id="lpCheDoList" style="display:none;">
+            @if (!agendaByDay.Any())
+            {
+                <div class="lp-empty">Chưa có lịch nào trong 30 ngày tới.</div>
+            }
+            else
+            {
+                foreach (var g in agendaByDay)
+                {
+                    <div class="lp-day-group">
+                        <div class="lp-day-head">
+                            @g.Key.ToString("dddd, dd/MM", new System.Globalization.CultureInfo("vi-VN")) @(g.Key == today ? "· Hôm nay" : "")
+                        </div>
+                        @foreach (var ev in g.OrderBy(e => e.ThoiGianBatDau))
+                        {
+                            <div class="lp-ev">
+                                <div class="lp-ev-time">@ev.ThoiGianBatDau.ToString("HH:mm")</div>
+                                <div>
+                                    <div class="lp-ev-title">@ev.TieuDe</div>
+                                    <div class="lp-ev-sub">@Phu(ev)@(string.IsNullOrWhiteSpace(ev.DiaDiem) ? "" : $" · {ev.DiaDiem}")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    <a href="https://calendar.google.com/calendar/render?cid=webcal://@Context.Request.Host.Value/calendar/cong-khai.ics" target="_blank" class="lp-gg-btn">
+        <i class="bi bi-google"></i>Thêm vào Google Calendar
+    </a>
+</div>
+}
+
+</div>
+
+<script>
+var lpEventsByDay = @Html.Raw(lpEventsJson);
+function lpChonCheDo(mode) {
+    document.getElementById('lpCheDoCal').style.display  = mode === 'cal'  ? '' : 'none';
+    document.getElementById('lpCheDoList').style.display = mode === 'list' ? '' : 'none';
+    document.getElementById('btnLpCal').classList.toggle('active', mode === 'cal');
+    document.getElementById('btnLpList').classList.toggle('active', mode === 'list');
+}
+// Dựng bằng DOM API (không dùng innerHTML với dữ liệu từ server) — trang này công khai, không đăng
+// nhập vẫn xem được, nên tiêu đề lịch/địa điểm (do người dùng nhập) phải qua textContent để tránh
+// XSS lưu trữ nếu ai đó lỡ gõ ký tự HTML vào tiêu đề lịch.
+function lpXemNgay(ngay) {
+    var ds = lpEventsByDay[ngay] || [];
+    var box = document.getElementById('lpDayDetail');
+    if (ds.length === 0) { box.classList.remove('show'); return; }
+    var d = new Date(ngay + 'T00:00:00');
+    document.getElementById('lpDayDetailTitle').textContent =
+        'Ngày ' + d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    var body = document.getElementById('lpDayDetailBody');
+    body.innerHTML = '';
+    ds.forEach(function (ev) {
+        var row = document.createElement('div'); row.className = 'lp-ev';
+        var time = document.createElement('div'); time.className = 'lp-ev-time'; time.textContent = ev.time;
+        var info = document.createElement('div');
+        var title = document.createElement('div'); title.className = 'lp-ev-title'; title.textContent = ev.title;
+        var sub = document.createElement('div'); sub.className = 'lp-ev-sub'; sub.textContent = ev.sub;
+        info.appendChild(title); info.appendChild(sub);
+        row.appendChild(time); row.appendChild(info);
+        body.appendChild(row);
+    });
+    box.classList.add('show');
+}
+</script>
 
 <script>
 function togglePwd() {

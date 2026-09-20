@@ -1,0 +1,116 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   BIỂU MẪU — "Phiếu nhập" (áp dụng cho MỌI form dùng .form-section)
+   Mỗi phần là 1 tờ phiếu riêng, có tiêu đề + lời hướng dẫn ngắn; thanh bước
+   dính phía trên cho biết đang ở phần nào và phần nào đã điền đủ; thanh nút
+   dính phía dưới nên luôn thấy nút Lưu (xem wwwroot/js/form-ux.js).
+   Nạp sau theme.css.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* position: sticky cần tổ tiên không phải "scroll container": dùng clip thay hidden */
+html, body { overflow-x: clip; }
+.main-wrapper, .page-content { overflow-x: clip; }
+
+.form-section {
+  border-radius: 14px; border: 1px solid var(--border); background: #fff; box-shadow: var(--shadow);
+  margin-bottom: 18px; overflow: visible; scroll-margin-top: 130px;
+}
+.form-section-header {
+  background: transparent; border-bottom: none; padding: 20px 24px 0; gap: 12px; align-items: flex-start;
+  font-size: 16px; font-weight: 800; letter-spacing: -.01em; flex-wrap: wrap;
+}
+.form-section-header .step-num {
+  width: 28px; height: 28px; margin-top: -2px; background: var(--primary-50); color: var(--primary);
+  border: 1.5px solid var(--primary-100); font-size: 13px;
+}
+.form-section-header .fs-hint {
+  flex-basis: 100%; margin: -4px 0 0 40px; font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0;
+}
+.form-section-body { padding: 18px 24px 24px; }
+.form-section-body > .row { --bs-gutter-x: 1.1rem; --bs-gutter-y: 1.1rem; }
+
+/* Ô nhập đồng đều: cùng chiều cao, cùng độ rộng trong khung */
+.form-control, .form-select, .ts-control { min-height: 42px !important; }
+.ts-wrapper { width: 100%; }
+.input-group > .ts-wrapper { flex: 1 1 auto; width: 1%; min-width: 0; }
+.input-group > .ts-wrapper .ts-control { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+textarea.form-control { min-height: 84px !important; }
+.form-label { margin-bottom: 6px; }
+.form-control:hover:not(:focus):not(:disabled), .ts-control:hover { border-color: #B4C0CF !important; }
+
+/* Khối tuỳ chọn nổi bật (vd "Văn bản dùng chung") */
+.opt-card {
+  display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1.5px solid var(--border);
+  border-radius: 12px; background: #FAFCFD; cursor: pointer; transition: border-color .15s, background .15s; margin: 0;
+}
+.opt-card:hover { border-color: var(--primary-200); }
+.opt-card:has(input:checked) { border-color: var(--primary); background: var(--primary-50); }
+.opt-card input { margin-top: 3px; flex-shrink: 0; }
+.opt-card .opt-title { font-weight: 700; font-size: 14px; }
+.opt-card .opt-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* Thanh bước (dựng bởi form-ux.js) */
+.form-steps {
+  position: sticky; top: calc(var(--topbar-h) + 8px); z-index: 50; display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 8px; margin: 0 0 16px; background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
+  border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md);
+}
+.form-steps a {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; color: var(--text-soft); text-decoration: none; transition: background .12s;
+}
+.form-steps a:hover { background: var(--sidebar-hover); }
+.form-steps a .n {
+  width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--muted); font-size: 11.5px; font-weight: 800; border: 1.5px solid var(--border-2);
+}
+.form-steps a.current { background: var(--primary-50); color: var(--primary-dark); }
+.form-steps a.current .n { background: var(--primary); border-color: var(--primary); color: #fff; }
+.form-steps a.done .n { background: var(--success); border-color: var(--success); color: #fff; }
+.form-steps a.done .n::before { content: "\F26E"; font-family: "bootstrap-icons"; font-size: 12px; }
+.form-steps a.done .n span { display: none; }
+
+/* Thanh nút dính đáy */
+.form-actionbar {
+  position: sticky; bottom: 0; z-index: 40; margin: 8px -28px -40px; padding: 14px 28px;
+  background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 20px rgba(23,34,47,.06);
+}
+.form-actionbar .btn-lg { font-size: 14px; padding: 9px 20px; }
+.form-actionbar .form-req-note { font-size: 12.5px; color: var(--muted); align-self: center; margin-left: 4px; }
+
+@media (max-width: 900px) {
+  .form-section-header { padding: 16px 16px 0; font-size: 15px; }
+  .form-section-header .fs-hint { margin-left: 0; }
+  .form-section-body { padding: 14px 16px 18px; }
+  .form-steps { top: calc(var(--topbar-h) + 4px); overflow-x: auto; flex-wrap: nowrap; }
+  .form-steps a { white-space: nowrap; }
+  .form-actionbar { margin: 8px -14px -32px; padding: 12px 14px; }
+}
+
+/* Nút trong trạng thái trống: icon không bị phóng to theo .empty-state i */
+.empty-state .btn i { display: inline; font-size: inherit; margin: 0 4px 0 0; opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TRANG CHI TIẾT VĂN BẢN — "thẻ hồ sơ": trích yếu là tiêu đề, thông tin chính
+   xếp lưới, chi tiết phụ gọn lại; phân công + file nằm cột phải.
+   ═══════════════════════════════════════════════════════════════════════ */
+.vb-hero { padding: 22px 26px 22px; border-radius: 16px; }
+.vb-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .05em; }
+.vb-eyebrow .mono { text-transform: none; letter-spacing: 0; color: var(--text-soft); }
+.vb-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border-2); }
+.vb-title { font-size: 20px; font-weight: 800; line-height: 1.4; letter-spacing: -.015em; margin: 8px 0 16px; color: var(--text); }
+.vb-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 22px; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.vb-meta dt, .dl-grid dt { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.vb-meta dd, .dl-grid dd { margin: 0; font-size: 14px; color: var(--text); font-weight: 500; }
+.status-stepper .step-sub { font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px 24px; margin: 0; }
+.dl-grid .full { grid-column: 1 / -1; }
+
+/* Bảng chi tiết xếp dọc (cột hẹp): nhãn nhỏ phía trên, giá trị bên dưới */
+.detail-tbl.stack, .detail-tbl.stack tbody { display: block; width: 100%; }
+.detail-tbl.stack tr { display: block; padding: 12px 18px; border-bottom: 1px solid #EDF0F4; }
+.detail-tbl.stack tr:last-child { border-bottom: none; }
+.detail-tbl.stack th, .detail-tbl.stack td { display: block; width: auto !important; padding: 0 !important; border: none !important; background: transparent !important; }
+.detail-tbl.stack th { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+
+@media (max-width: 700px) { .vb-hero { padding: 16px; } .vb-title { font-size: 17px; } }

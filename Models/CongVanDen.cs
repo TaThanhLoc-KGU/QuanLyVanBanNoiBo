@@ -30,6 +30,7 @@ public class CongVanDen
     public string? MSCVDi { get; set; }
     public DateTime? NgayGuiEmail { get; set; }
     public short? MaNVGuiEmail { get; set; }
+    public bool DungChung { get; set; } // Văn bản dùng chung nội bộ — mọi viên chức đều xem được (migration 037)
     public DateTime? DonViDaXemLuc { get; set; } // Đơn vị xử lý chính đã mở xem văn bản này lúc nào (NULL = chưa)
 
     // Navigation / display

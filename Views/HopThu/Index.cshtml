@@ -1,0 +1,109 @@
+@model CongVan.Models.HopThuViewModel
+@{
+    ViewData["Title"] = "Văn bản của tôi";
+    string TabCss(string t) => Model.Tab == t ? "active" : "";
+}
+
+@if (Model.Loai == 2)
+{
+    ViewData["Title"] = "Văn bản đi";
+    <div class="page-header">
+        <div>
+            <h1><i class="bi bi-send-fill me-2"></i>Văn bản đi</h1>
+            <p class="page-header-sub">Dự thảo đang <strong>chờ bạn</strong> duyệt, cho ý kiến hoặc ban hành.</p>
+        </div>
+        <div class="page-header-actions">
+            <a asp-controller="DuThao" asp-action="Nhap" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Soạn văn bản đi</a>
+        </div>
+    </div>
+    <partial name="_VanBanDiTabs" model='"cho"' />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1><i class="bi bi-inbox-fill me-2 text-primary"></i>Văn bản của tôi</h1>
+            <p class="page-header-sub">Chỉ hiện văn bản <strong>được chuyển cho bạn</strong> xử lý hoặc để biết. Bấm vào văn bản để xử lý, cho ý kiến, chuyển tiếp hoặc trả lại.</p>
+        </div>
+    </div>
+}
+
+<div class="tab-bar">
+    <a class="tab-pill @TabCss("cho")" asp-action="Index" asp-route-tab="cho" asp-route-loai="@Model.Loai">
+        <i class="bi bi-hourglass-split"></i>Chờ xử lý
+        @if (Model.DemCho > 0) { <span class="badge-count">@Model.DemCho</span> }
+    </a>
+    <a class="tab-pill tone-success @TabCss("da")" asp-action="Index" asp-route-tab="da" asp-route-loai="@Model.Loai">
+        <i class="bi bi-check2-circle"></i>Đã xử lý
+    </a>
+    <a class="tab-pill @TabCss("xembiet")" asp-action="Index" asp-route-tab="xembiet" asp-route-loai="@Model.Loai">
+        <i class="bi bi-eye"></i>Xem để biết
+        @if (Model.DemXemBiet > 0) { <span class="badge-count">@Model.DemXemBiet</span> }
+    </a>
+</div>
+
+<form method="get" class="d-flex gap-2 mb-3">
+    <input type="hidden" name="tab" value="@Model.Tab" /><input type="hidden" name="loai" value="@Model.Loai" />
+    <input type="text" name="tuKhoa" value="@Model.TuKhoa" class="form-control form-control-sm" style="max-width:360px;" placeholder="Tìm theo trích yếu, số ký hiệu, cơ quan..." />
+    <button class="btn btn-sm btn-primary"><i class="bi bi-search me-1"></i>Tìm</button>
+</form>
+
+@if (!Model.DanhSach.Any())
+{
+    <div class="card">
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <p>@(Model.Tab == "cho" ? "Bạn không có văn bản nào đang chờ xử lý" : Model.Tab == "da" ? "Chưa có văn bản nào đã xử lý" : "Không có văn bản nào để xem")</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tbl-wrap">
+        <table class="app-table tbl-clickable">
+            <thead>
+                <tr>
+                    <th style="width:92px;">Ngày nhận</th>
+                    <th style="width:150px;">Số ký hiệu</th>
+                    <th>Trích yếu</th>
+                    <th style="width:170px;">Người chuyển</th>
+                    <th style="width:110px;">Vai trò</th>
+                    <th style="width:100px;">Hạn xử lý</th>
+                    <th style="width:120px;">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var x in Model.DanhSach)
+            {
+                bool chuaMo = x.NgayXem == null;
+                bool quaHan = x.HanXuLy.HasValue && x.DangCho && x.HanXuLy < DateTime.Now;
+                <tr onclick="location.href='@(x.LoaiVB == 2 ? Url.Action("ChiTiet", "DuThao", new { id = x.MSCV.Trim() }) : Url.Action("ChiTiet", "CongVanDen", new { id = x.MSCV.Trim() }))'" style="cursor:pointer;@(chuaMo ? "font-weight:700;" : "")">
+                    <td>@x.NgayGui.ToString("dd/MM/yyyy")<div class="fs-12 text-muted">@x.NgayGui.ToString("HH:mm")</div></td>
+                    <td class="mono">@x.SoKyHieu</td>
+                    <td>
+                        @x.TrichYeu
+                        <div class="fs-12 text-muted" style="font-weight:400;">@(x.LoaiVB == 2 ? "Dự thảo văn bản đi" : "Văn bản đến")@(string.IsNullOrEmpty(x.TenLVB) ? "" : " · " + x.TenLVB)@(string.IsNullOrEmpty(x.TenCQ) ? "" : " · " + x.TenCQ)</div>
+                        @if (!string.IsNullOrWhiteSpace(x.NoiDungGui))
+                        {
+                            <div class="fs-12" style="font-weight:400;color:var(--primary);"><i class="bi bi-chat-left-text me-1"></i>@x.NoiDungGui</div>
+                        }
+                    </td>
+                    <td>@(x.TenNVGui ?? "Văn thư")</td>
+                    <td><span class="badge-status @(x.VaiTro == 1 ? "done" : x.VaiTro == 2 ? "processing" : "new")">@x.TenVaiTro</span></td>
+                    <td style="@(quaHan ? "color:var(--danger);font-weight:700;" : "")">@(x.HanXuLy?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td>@x.TenTrangThai</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Trang.TotalPages > 1)
+    {
+        <div class="d-flex gap-2 justify-content-center mt-3 align-items-center">
+            @if (Model.Trang.Page > 1) { <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-tab="@Model.Tab" asp-route-tuKhoa="@Model.TuKhoa" asp-route-page="@(Model.Trang.Page - 1)">‹ Trước</a> }
+            <span class="fs-13 text-muted">Trang @Model.Trang.Page / @Model.Trang.TotalPages (@Model.Trang.TotalCount văn bản)</span>
+            @if (Model.Trang.Page < Model.Trang.TotalPages) { <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-tab="@Model.Tab" asp-route-tuKhoa="@Model.TuKhoa" asp-route-page="@(Model.Trang.Page + 1)">Sau ›</a> }
+        </div>
+    }
+}

@@ -88,6 +88,61 @@ public static class HuongDanSuDung
                   thống). Chi tiết kỹ thuật xem file <code>API_VANBANNOIBO.md</code> trong mã nguồn.</li>
             </ul>
             """),
+        ["LichLamViec/Index"] = new("Lịch làm việc",
+            """
+            <ul>
+              <li>Gồm <b>lịch lãnh đạo</b>, <b>lịch công tác</b> (đơn vị/toàn trường) và <b>lịch nội bộ đơn vị</b>
+                  — bấm vào ngày để xem chi tiết.</li>
+              <li><b>Nhập từ Excel</b>: tải file mẫu (có sẵn ô chọn xổ xuống cho Loại lịch, Loại sự kiện, Đơn vị,
+                  Phòng họp) rồi nhập hàng loạt. Lịch nhập qua Excel luôn thuộc về chính bạn; dòng lỗi được liệt
+                  kê kèm số dòng ở trang kết quả. Nhập lại cùng file sẽ tạo trùng.</li>
+              <li><b>Liên kết Google Calendar</b>: dán đường dẫn riêng của bạn vào Google Calendar (Thêm lịch → Từ URL).
+                  Chỉ một chiều (hệ thống → Google), Google làm mới vài giờ/lần. <b>Không chia sẻ</b> đường dẫn này.</li>
+              <li>Trang <a href="/cong-khai" target="_blank">/cong-khai</a> (và khối lịch ở trang Đăng nhập) cho phép
+                  ai cũng xem lịch, không cần đăng nhập — chỉ hiện sau khi Admin bật công bố tính năng mới.</li>
+            </ul>
+            """),
+        ["DuThao/ChiTiet"] = new("Chi tiết văn bản đi",
+            """
+            <ul>
+              <li>Sơ đồ ở trên cho biết dự thảo <b>đang ở bước nào</b>: Người soạn → Lãnh đạo duyệt → Văn thư ban hành → Đã ban hành.</li>
+              <li>Bảng “Quá trình xử lý theo người” cho biết ai đang giữ, ai đã làm gì, ý kiến và thời gian; mở “Nhật ký thao tác” để xem đầy đủ.</li>
+              <li>Bạn chỉ sửa được khi dự thảo còn nháp hoặc đang nằm ở hộp thư của bạn (bị trả lại).</li>
+            </ul>
+            """),
+        ["ThongBao/Nhap"] = new("Đăng thông báo",
+            """
+            <ul>
+              <li>Chọn đối tượng nhận: toàn trường, theo đơn vị hoặc theo nhóm quyền.</li>
+              <li>Tick <b>"Hiển thị lên trang công khai"</b> để thông báo hiện thêm ở <a href="/cong-khai" target="_blank">/cong-khai</a>
+                  và trang Đăng nhập — <b>ai cũng xem được, kể cả không đăng nhập</b> (bất kể đối tượng nhận đã chọn).
+                  File đính kèm không được công khai. Mặc định KHÔNG tick.</li>
+            </ul>
+            """),
+        ["HopThu/Index"] = new("Văn bản của tôi",
+            """
+            <ul>
+              <li>Đây là <b>hộp thư cá nhân</b>: chỉ hiện văn bản <b>được chuyển cho bạn</b>. Văn bản đến chỉ hiện ở sổ chung
+                  nếu được đánh dấu <b>dùng chung</b> hoặc được chuyển cho bạn.</li>
+              <li><b>Chờ xử lý</b>: bạn là người xử lý chính hoặc đồng xử lý. <b>Đã xử lý</b>: bạn đã chuyển tiếp, cho ý kiến, kết thúc
+                  hoặc trả lại. <b>Xem để biết</b>: bạn chỉ được đồng gửi — mở ra xem là xong.</li>
+              <li>Dòng <b>in đậm</b> là văn bản bạn chưa mở. Bấm vào dòng để xử lý.</li>
+              <li>Trong trang văn bản: <b>Chuyển tiếp</b> (chọn 1 người xử lý chính, đồng xử lý, đồng gửi), <b>Cho ý kiến</b> (đồng xử lý),
+                  <b>Kết thúc xử lý</b> (người xử lý chính, ghi kết quả), <b>Trả lại</b> (kèm lý do, văn bản quay về người đã chuyển).</li>
+              <li>Người chuyển có thể <b>thu hồi</b> nếu người nhận chưa mở xem. Mọi bước đều được ghi vào nhật ký.</li>
+            </ul>
+            """),
+        ["DuThao/Index"] = new("Văn bản đi",
+            """
+            <ul>
+              <li><b>Văn bản đi là một mục duy nhất</b> với 3 tab: <b>Dự thảo của tôi</b> (bạn soạn), <b>Chờ tôi xử lý</b> (bạn cần duyệt/ban hành), <b>Sổ văn bản đi</b> (đã ban hành).</li>
+              <li>Bấm <b>Soạn văn bản đi</b>: nhập trích yếu, loại văn bản, độ khẩn, đính kèm file dự thảo (Word/PDF), chọn nơi nhận.</li>
+              <li><b>Lưu nháp</b> để soạn tiếp sau, hoặc <b>Lưu &amp; trình lãnh đạo đơn vị</b> để gửi duyệt ngay.</li>
+              <li>Lãnh đạo đơn vị <b>duyệt &amp; chuyển văn thư</b>, hoặc <b>trả lại</b> kèm ý kiến — dự thảo về lại hộp thư của bạn để sửa và trình lại.</li>
+              <li>Văn thư đơn vị bấm <b>Ban hành</b>: vào sổ văn bản đi, cấp số ký hiệu. Sau đó dự thảo hiện “Đã ban hành” kèm số văn bản.</li>
+              <li>Chỉ xóa được dự thảo khi còn ở trạng thái nháp.</li>
+            </ul>
+            """),
         ["Admin/PhanQuyen"] = new("Phân quyền (toàn trường)",
             """
             <ul>

@@ -25,8 +25,19 @@ public class BaseController : Controller
     private static readonly HashSet<string> ControllerTinhNangMoi = new(StringComparer.OrdinalIgnoreCase)
     {
         "VanBanDieuHanh", "CongViec", "HoSoCongViec", "LichCongTac", "LichLamViec",
-        "ThongBao", "LichNoiBoDonVi", "VanBanNoiBo"
+        "ThongBao", "LichNoiBoDonVi", "VanBanNoiBo", "HopThu", "DuThao"
     };
+    protected static readonly string[] QuyenVuotPhamViCongVanDen =
+    {
+        "Global.XemToanTruong", "CongVanDen.Nhap", "CongVanDen.Xoa", "CongVanDen.GuiEmail",
+        "CongVanDen.XacNhanHoanThanh", "CongVanDen.XuLyDV", "CongVanDen.ChuyenXuLy",
+        "CongVanDen.ChiDaoPhanCong", "CongVanDen.XinYKienBGH", "CongVanDen.TraLai", "CongVanDen.BGHTraLoiYKien"
+    };
+
+    // VIÊN CHỨC THƯỜNG: không giữ quyền "Văn bản đến" nào, không phải văn thư/lãnh đạo đơn vị — chỉ thấy văn bản
+    // được chuyển cho mình hoặc dùng chung. Chỉ áp dụng khi Admin đã công bố tính năng mới (hộp thư dùng được).
+    protected bool LaVienChucThuong =>
+        TinhNangMoiCongKhai && !QuyenVuotPhamViCongVanDen.Any(CoQuyen) && !LaVanThuDonVi && !LaLanhDaoDonVi;
     protected List<int> Quyen
     {
         get
@@ -54,7 +65,41 @@ public class BaseController : Controller
     // đầy đủ quyền tương đương hôm nay, nên không ai mất quyền khi đổi luật này.
     protected bool CoQuyen(string maChucNang) => ChucNangDangKy.CoQuyen(Quyen, ChucNang, maChucNang);
 
-    protected new IActionResult Forbid() => StatusCode(403);
+    // Không có quyền: KHÔNG hiện trang lỗi 403 trắng của trình duyệt. Yêu cầu AJAX nhận JSON 403 (giữ hành vi cũ cho script);
+    // còn lại báo "không có quyền" bằng thông báo đỏ rồi đưa người dùng về trang họ vừa đứng (hoặc Tổng quan).
+    protected new IActionResult Forbid() => TuChoi("Bạn không có quyền sử dụng chức năng này.");
+
+    protected IActionResult TuChoi(string thongBao)
+    {
+        bool ajax = Request.Headers["X-Requested-With"] == "XMLHttpRequest"
+            || Request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
+        if (ajax) return StatusCode(403, new { ok = false, msg = thongBao });
+
+        TempData["Error"] = thongBao;
+        var hienTai = Request.Path + Request.QueryString;
+        if (Uri.TryCreate(Request.Headers.Referer.ToString(), UriKind.Absolute, out var u)
+            && string.Equals(u.Host, Request.Host.Host, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(u.PathAndQuery, hienTai, StringComparison.OrdinalIgnoreCase)
+            && !u.AbsolutePath.StartsWith("/Account", StringComparison.OrdinalIgnoreCase))
+            return Redirect(u.PathAndQuery);
+        return RedirectToAction("Index", "Home");
+    }
+
+    // Số văn bản đang chờ trong hộp thư cá nhân — hiện badge ở menu (mọi trang đều cần).
+    public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (MaNV > 0 && XemDuocTinhNangMoi)
+        {
+            try
+            {
+                var db = context.HttpContext.RequestServices.GetRequiredService<CongVan.Services.DbService>();
+                var (cho, xb) = await db.DemHopThuAsync(MaNV);
+                ViewData["DemHopThu"] = cho + xb;
+            }
+            catch { /* badge chỉ là phụ — không để lỗi đếm làm hỏng cả trang */ }
+        }
+        await base.OnActionExecutionAsync(context, next);
+    }
 
     public override void OnActionExecuting(ActionExecutingContext context)
     {
@@ -68,7 +113,7 @@ public class BaseController : Controller
             var tenController = (context.RouteData.Values["controller"] as string) ?? "";
             if (ControllerTinhNangMoi.Contains(tenController))
             {
-                context.Result = StatusCode(404);
+                context.Result = TuChoi("Chức năng này chưa được mở cho bạn.");
                 return;
             }
         }
