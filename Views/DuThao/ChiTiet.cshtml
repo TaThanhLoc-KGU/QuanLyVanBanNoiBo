@@ -3,7 +3,7 @@
     var d = Model.DuThao;
     ViewData["Title"] = "Văn bản đi #" + d.ID;
     string buoc = Model.BuocHienTai; // soan | duyet | banhanh | xong
-    bool khungXemXet = (Model.CoTheDuyet || Model.CoTheBanHanh) && !Model.LaNguoiSoan;
+    bool khungXemXet = Model.CoTheDuyet || Model.CoTheBanHanh; // kể cả khi người soạn cũng chính là văn thư ban hành
 }
 
 <div class="page-header">
@@ -12,6 +12,10 @@
         <p class="page-header-sub">Soạn bởi <strong>@d.TenNVSoan</strong> · @d.TenDVSoan · tạo lúc @d.NgayTao.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
     <div class="page-header-actions">
+        @if (Model.CoTheBanHanh)
+        {
+            <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành</a>
+        }
         @if (Model.CoTheBanHanhNgay)
         {
             <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành ngay</a>

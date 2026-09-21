@@ -76,7 +76,7 @@
                                 @if (x.NgayXuLy.HasValue) { <div>→ @x.NgayXuLy.Value.ToString("dd/MM HH:mm")</div> }
                             </td>
                         </tr>
-                        @if (x.TrangThai == VanBanXuLy.ChoXuLy && x.NgayXem == null && x.MaNVGui == Model.MaNV)
+                        @if (!Model.AnNut && x.TrangThai == VanBanXuLy.ChoXuLy && x.NgayXem == null && x.MaNVGui == Model.MaNV)
                         {
                             <tr>
                                 <td colspan="6" class="text-end py-1">

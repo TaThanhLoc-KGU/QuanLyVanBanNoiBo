@@ -205,7 +205,7 @@ public class DuThaoController : BaseController
             CoTheBanHanhNgay = laSoan && chuaXong && k < 0 && laVanThuPhuHop,
             CoTheDuyet = dangDuyet && dangGiu,
             CoTheBanHanh = dangBanHanh && dangGiu && laVanThuPhuHop,
-            CoTheTraLai = chuaXong && dangGiu && k >= 0 && !laSoan,
+            CoTheTraLai = chuaXong && dangGiu && k >= 0,
             CoTheSua = chuaXong && (laSoan || dangGiu || CoQuyen("Admin.NhanVien")),
             NhanNutDuyet = tokHienTai == DuThao.BuocVanThu1 ? "Đã kiểm tra — chuyển lãnh đạo ký"
                 : laBuocKy ? "Ký duyệt" : "Duyệt & chuyển tiếp",
@@ -274,7 +274,7 @@ public class DuThaoController : BaseController
     {
         var d = await _db.GetDuThaoAsync(id);
         var dong = await _db.GetDongDangChoAsync(Loai, id.ToString(), MaNV);
-        if (d == null || dong is not { VaiTro: VanBanXuLy.VaiTroChinh } || d.MaNVSoan == MaNV) return Forbid();
+        if (d == null || dong is not { VaiTro: VanBanXuLy.VaiTroChinh } || d.BuocIdx < 0) return Forbid();
         if (string.IsNullOrWhiteSpace(lyDo))
         {
             TempData["Error"] = "Vui lòng nhập lý do trả lại để người soạn biết cần sửa gì.";
