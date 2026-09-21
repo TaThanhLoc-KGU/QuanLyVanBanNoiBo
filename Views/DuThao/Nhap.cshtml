@@ -1,14 +1,18 @@
 @model CongVan.Models.DuThaoFormViewModel
+@using System.Text.Json
 @{
     var d = Model.DuThao;
     bool moi = d.ID == 0;
-    ViewData["Title"] = "Soạn văn bản đi";
+    ViewData["Title"] = moi ? "Soạn văn bản đi" : "Chỉnh sửa văn bản đi";
+    bool khoa = Model.Khoa; // đã trình: khóa phạm vi + người ký
+    string tenLD = Model.LanhDaoDonVi?.HoTen ?? "";
+    var kyTruongJson = JsonSerializer.Serialize(Model.DanhSachKyTruong.Select(n => new { id = n.MaNV, ten = n.HoTen + (string.IsNullOrEmpty(n.TenDV) ? "" : " — " + n.TenDV) }));
 }
 
 <div class="page-header">
     <div>
-        <h1><i class="bi bi-send-fill me-2"></i>@(moi ? "Soạn văn bản đi" : "Sửa văn bản đi") @if (!moi) { <span class="mono" style="font-size:16px;color:var(--muted);">#@d.ID</span> }</h1>
-        <p class="page-header-sub">Đơn vị soạn thảo: <strong>@Model.TenDVSoan</strong>. Lưu nháp để soạn tiếp sau, hoặc gửi lãnh đạo đơn vị duyệt ngay.</p>
+        <h1><i class="bi bi-send-fill me-2"></i>@ViewData["Title"] @if (!moi) { <span class="mono" style="font-size:16px;color:var(--muted);">#@d.ID</span> }</h1>
+        <p class="page-header-sub">Đơn vị soạn thảo: <strong>@Model.TenDVSoan</strong>.@(moi ? " Lưu nháp để soạn tiếp sau, hoặc trình duyệt ngay." : " Chỉnh sửa xong bấm Lưu — luồng duyệt đang chạy được giữ nguyên.")</p>
     </div>
     <div class="page-header-actions">
         <a asp-action="@(moi ? "Index" : "ChiTiet")" asp-route-id="@(moi ? null : d.ID)" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
@@ -24,26 +28,32 @@
     {
         <div class="alert alert-info py-2 fs-13"><i class="bi bi-reply-fill me-1"></i>Văn bản này soạn để <strong>trả lời văn bản đến</strong> số <span class="mono">@d.MSCVDen</span>.</div>
     }
+    @if (khoa)
+    {
+        <div class="alert alert-warning py-2 fs-13"><i class="bi bi-lock-fill me-1"></i>Văn bản đã trình duyệt nên <strong>phạm vi ban hành và người ký đang được khóa</strong>. Bạn vẫn sửa được nội dung, file và nơi nhận. Muốn đổi phạm vi/người ký, nhờ người duyệt <b>trả lại</b> rồi sửa.</div>
+        <input type="hidden" name="DuThao.PhamVi" value="@d.PhamVi" />
+        <input type="hidden" name="DuThao.MaNVKy" value="@d.MaNVKy" />
+    }
 
-    <div class="form-section" data-hint="Văn bản này ban hành ở cấp nào? Quyết định ai duyệt và ai ban hành.">
+    <div class="form-section" data-hint="Văn bản này ban hành ở cấp nào? Quyết định ai duyệt, ai ký và ai ban hành.">
         <div class="form-section-header"><span class="step-num">1</span>Phạm vi ban hành</div>
         <div class="form-section-body">
             <div class="row">
                 <div class="col-md-6">
-                    <label class="opt-card" for="pv1">
-                        <input class="form-check-input" type="radio" name="DuThao.PhamVi" id="pv1" value="1" @(d.PhamVi != 2 ? "checked" : "") onchange="dtDoiPhamVi()" />
+                    <label class="opt-card" for="pv1" style="@(khoa ? "opacity:.65;pointer-events:none;" : "")">
+                        <input class="form-check-input" type="radio" name="@(khoa ? "_pv" : "DuThao.PhamVi")" id="pv1" value="1" @(d.PhamVi != 2 ? "checked" : "") onchange="dtDoiPhamVi()" @(khoa ? "disabled" : "") />
                         <div>
                             <div class="opt-title"><i class="bi bi-building me-1 text-primary"></i>Cấp trường</div>
-                            <div class="opt-desc">Văn bản ra ngoài trường hoặc gửi các đơn vị. Trình duyệt/ký qua nhiều cấp, <b>văn thư trường (cấp 1)</b> ban hành và cấp số.</div>
+                            <div class="opt-desc">Văn bản ra ngoài trường hoặc gửi các đơn vị. Luồng: lãnh đạo đơn vị → <b>văn thư trường (cấp 1)</b> kiểm tra → <b>lãnh đạo trường ký</b> → văn thư cấp 1 ban hành, cấp số.</div>
                         </div>
                     </label>
                 </div>
                 <div class="col-md-6">
-                    <label class="opt-card" for="pv2">
-                        <input class="form-check-input" type="radio" name="DuThao.PhamVi" id="pv2" value="2" @(d.PhamVi == 2 ? "checked" : "") onchange="dtDoiPhamVi()" />
+                    <label class="opt-card" for="pv2" style="@(khoa ? "opacity:.65;pointer-events:none;" : "")">
+                        <input class="form-check-input" type="radio" name="@(khoa ? "_pv" : "DuThao.PhamVi")" id="pv2" value="2" @(d.PhamVi == 2 ? "checked" : "") onchange="dtDoiPhamVi()" @(khoa ? "disabled" : "") />
                         <div>
                             <div class="opt-title"><i class="bi bi-people me-1 text-primary"></i>Nội bộ đơn vị</div>
-                            <div class="opt-desc">Chỉ trong @Model.TenDVSoan. Lãnh đạo đơn vị duyệt, <b>văn thư đơn vị (cấp 2)</b> ban hành vào sổ văn bản nội bộ của đơn vị.</div>
+                            <div class="opt-desc">Chỉ trong @Model.TenDVSoan. <b>Lãnh đạo đơn vị duyệt và ký</b>, <b>văn thư đơn vị (cấp 2)</b> ban hành vào sổ văn bản nội bộ của đơn vị.</div>
                         </div>
                     </label>
                 </div>
@@ -86,11 +96,16 @@
                     </select>
                 </div>
                 <div class="col-md-6 col-xl-4">
-                    <label class="form-label">Người ký dự kiến</label>
-                    <select asp-for="DuThao.MaNVKy" class="form-select ts-select">
-                        <option value="">Chưa chọn</option>
-                        @foreach (var nv in Model.DanhSachNguoiKy) { <option value="@nv.MaNV">@nv.HoTen</option> }
-                    </select>
+                    <label class="form-label" id="lblKy">Người ký</label>
+                    @if (khoa)
+                    {
+                        <input class="form-control" value="@(d.TenNVKy ?? "—")" disabled />
+                    }
+                    else
+                    {
+                        <select id="selKy" name="DuThao.MaNVKy" class="form-select"></select>
+                    }
+                    <div class="form-hint" id="hintKy"></div>
                 </div>
                 <div class="col-md-6 col-xl-4">
                     <label class="form-label">Hạn xử lý</label>
@@ -155,54 +170,112 @@
         </div>
     </div>
 
-    <div class="form-section" data-hint="Ai duyệt/ký, theo thứ tự nào. Sau cùng văn thư ban hành.">
-        <div class="form-section-header"><span class="step-num">5</span>Gửi duyệt</div>
+    <div class="form-section" data-hint="Luồng duyệt tự dựng theo phạm vi ban hành và người ký bạn chọn.">
+        <div class="form-section-header"><span class="step-num">5</span>Luồng duyệt</div>
         <div class="form-section-body">
             <div class="row">
-                <div class="col-12" id="boChuoiDuyet">
-                    <label class="form-label">Chuỗi duyệt / ký <span class="text-muted fs-12">— chọn theo thứ tự, kéo để đổi thứ tự</span></label>
-                    <select id="selChuoi" multiple placeholder="Chọn người duyệt/ký...">
-                        @foreach (var nv in Model.DanhSachNguoiDuyet)
-                        {
-                            <option value="@nv.MaNV" selected="@(Model.ChuoiDuyet.Contains(nv.MaNV))">@nv.HoTen — @nv.TenDV</option>
-                        }
-                    </select>
-                    <input type="hidden" name="chuoiDuyetCsv" id="chuoiDuyetCsv" value="@string.Join(",", Model.ChuoiDuyet)" />
-                    <div class="form-hint">Gợi ý sẵn lãnh đạo đơn vị. Thêm lãnh đạo trường nếu cần ký cấp trên; xong chuỗi, văn bản chuyển <b>văn thư trường</b> ban hành.</div>
-                </div>
+                <div class="col-12"><div class="flow-line" id="dtFlow"></div><div class="form-hint" id="dtFlowNote"></div></div>
                 <div class="col-12">
                     <label class="form-label">Ghi chú cho người duyệt</label>
                     <textarea asp-for="DuThao.NoiDungXuLy" class="form-control" rows="3" maxlength="2000" placeholder="Ví dụ: Nhờ anh/chị xem giúp mục 3, đã cập nhật theo góp ý hôm trước..."></textarea>
-                </div>
-                <div class="col-12">
-                    <div class="flow-line" id="dtFlow"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <button type="submit" class="btn btn-primary btn-lg" id="btnTrinh" onclick="document.getElementById('hanhDong').value='trinh'"><i class="bi bi-send-fill me-1"></i>Lưu &amp; trình duyệt</button>
-        @if (Model.LaVanThuCap1 || Model.LaVanThuCap2)
+        @if (moi || Model.NguoiSuaLaTacGia && !khoa)
         {
-            <button type="submit" class="btn btn-success btn-lg" id="btnBanHanh" style="display:none;" onclick="document.getElementById('hanhDong').value='banhanh'"><i class="bi bi-journal-check me-1"></i>Lưu &amp; ban hành ngay</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="btnTrinh" onclick="document.getElementById('hanhDong').value='trinh'"><i class="bi bi-send-fill me-1"></i>Lưu &amp; trình duyệt</button>
+            @if (Model.LaVanThuCap1 || Model.LaVanThuCap2)
+            {
+                <button type="submit" class="btn btn-success btn-lg" id="btnBanHanh" style="display:none;" onclick="document.getElementById('hanhDong').value='banhanh'"><i class="bi bi-journal-check me-1"></i>Lưu &amp; ban hành ngay</button>
+            }
+            <button type="submit" class="btn btn-outline-secondary btn-lg" onclick="document.getElementById('hanhDong').value='luu'"><i class="bi bi-floppy me-1"></i>Lưu nháp</button>
         }
-        <button type="submit" class="btn btn-outline-secondary btn-lg" onclick="document.getElementById('hanhDong').value='luu'"><i class="bi bi-floppy me-1"></i>Lưu nháp</button>
+        else
+        {
+            <button type="submit" class="btn btn-primary btn-lg" onclick="document.getElementById('hanhDong').value='luu'"><i class="bi bi-floppy me-1"></i>Lưu chỉnh sửa</button>
+        }
     </div>
 </form>
 
 <style>
     .flow-line { display: flex; align-items: stretch; flex-wrap: wrap; }
-    .flow-node { flex: 1 1 150px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+    .flow-node { flex: 1 1 140px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
     .flow-node i { color: var(--muted); font-size: 17px; }
     .flow-node span { font-size: 12px; color: var(--muted); }
     .flow-node.on { border-color: var(--primary); background: var(--primary-50); }
     .flow-node.on i { color: var(--primary); }
-    .flow-arrow { flex: 0 0 28px; align-self: center; height: 2px; background: var(--border-2); position: relative; }
+    .flow-arrow { flex: 0 0 24px; align-self: center; height: 2px; background: var(--border-2); position: relative; }
     .flow-arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 7px solid var(--border-2); }
     @@media (max-width: 700px) { .flow-arrow { display: none; } .flow-node { margin-bottom: 8px; } }
 </style>
 <script>
+var KY_TRUONG = @Html.Raw(kyTruongJson);
+var LD_DV = { id: @(Model.LanhDaoDonVi?.MaNV ?? 0), ten: '@Html.Raw((tenLD).Replace("'", "\\'"))' };
+var TAC_GIA_LA_LD = @(Model.TacGiaLaLanhDaoDonVi ? "true" : "false");
+var KY_HIEN_TAI = @(d.MaNVKy ?? 0);
+var dtLaVT1 = @(Model.LaVanThuCap1 ? "true" : "false"), dtLaVT2 = @(Model.LaVanThuCap2 ? "true" : "false");
+var dtKhoa = @(khoa ? "true" : "false");
+
+function dtPhamVi() { if (dtKhoa) return '@d.PhamVi'; var r = document.querySelector('input[name="DuThao.PhamVi"]:checked'); return r ? r.value : '1'; }
+
+// Ô "Người ký" đổi theo phạm vi: cấp trường → chọn lãnh đạo trường; nội bộ → lãnh đạo đơn vị (cố định).
+function dtNapNguoiKy() {
+    var sel = document.getElementById('selKy'); if (!sel) return;
+    var pv = dtPhamVi(), giu = sel.value || String(KY_HIEN_TAI || '');
+    sel.innerHTML = '';
+    var lbl = document.getElementById('lblKy'), hint = document.getElementById('hintKy');
+    if (pv === '2') {
+        lbl.textContent = 'Lãnh đạo đơn vị ký';
+        if (LD_DV.id && !TAC_GIA_LA_LD) { sel.add(new Option(LD_DV.ten, LD_DV.id, true, true)); sel.disabled = false; hint.textContent = 'Văn bản nội bộ do lãnh đạo đơn vị duyệt và ký.'; }
+        else { sel.add(new Option(TAC_GIA_LA_LD ? 'Bạn là lãnh đạo đơn vị — không cần bước ký' : 'Đơn vị chưa có lãnh đạo phụ trách', '', true, true)); hint.textContent = ''; }
+    } else {
+        lbl.textContent = 'Lãnh đạo trường ký';
+        sel.add(new Option('Chọn lãnh đạo trường ký...', ''));
+        KY_TRUONG.forEach(function (n) { sel.add(new Option(n.ten, n.id, false, String(n.id) === giu)); });
+        hint.textContent = 'Người ký văn bản cấp trường (lãnh đạo trường).';
+    }
+}
+
+function dtDoiPhamVi() {
+    var pv = dtPhamVi();
+    dtNapNguoiKy();
+    var bh = document.getElementById('btnBanHanh'), tr = document.getElementById('btnTrinh');
+    var banhanh = (pv === '1' && dtLaVT1) || (pv === '2' && dtLaVT2);
+    if (bh) bh.style.display = banhanh ? '' : 'none';
+    if (tr) tr.className = banhanh ? 'btn btn-outline-primary btn-lg' : 'btn btn-primary btn-lg';
+    dtVeLuong();
+}
+
+function dtVeLuong() {
+    var pv = dtPhamVi(), box = document.getElementById('dtFlow'), note = document.getElementById('dtFlowNote'); if (!box) return;
+    var sel = document.getElementById('selKy'), kyId = sel ? sel.value : String(KY_HIEN_TAI || ''), kyTen = '';
+    if (pv === '1') { KY_TRUONG.forEach(function (n) { if (String(n.id) === kyId) kyTen = n.ten.split(' — ')[0]; }); }
+    var nodes = [{ ic: 'pencil', t: 'Người soạn', s: 'Bạn soạn và trình', on: true }];
+    var coLD = LD_DV.id && !TAC_GIA_LA_LD;
+    if (pv === '2') {
+        if (coLD) nodes.push({ ic: 'person-check', t: 'Lãnh đạo đơn vị duyệt / ký', s: LD_DV.ten });
+        nodes.push({ ic: 'journal-check', t: 'Văn thư đơn vị (cấp 2) ban hành', s: 'Vào sổ nội bộ đơn vị' });
+        note.textContent = dtLaVT2 ? 'Bạn là văn thư đơn vị: có thể bấm "Lưu & ban hành ngay" để bỏ qua bước duyệt.' : '';
+    } else {
+        if (coLD) nodes.push({ ic: 'person-check', t: 'Lãnh đạo đơn vị duyệt', s: LD_DV.ten });
+        if (!dtLaVT1) nodes.push({ ic: 'journal-check', t: 'Văn thư trường (cấp 1) kiểm tra', s: 'Thể thức, nơi nhận' });
+        if (kyTen) nodes.push({ ic: 'person-check', t: 'Lãnh đạo trường ký', s: kyTen });
+        nodes.push({ ic: 'journal-check', t: 'Văn thư trường (cấp 1) ban hành', s: 'Vào sổ, cấp số ký hiệu' });
+        note.textContent = kyTen ? '' : 'Chưa chọn lãnh đạo trường ký — văn bản sẽ không có bước ký của lãnh đạo trường.';
+        if (dtLaVT1) note.textContent += (note.textContent ? ' ' : '') + 'Bạn là văn thư trường: có thể "Lưu & ban hành ngay".';
+    }
+    box.innerHTML = '';
+    nodes.forEach(function (n, i) {
+        if (i > 0) { var a = document.createElement('div'); a.className = 'flow-arrow'; box.appendChild(a); }
+        var dv = document.createElement('div'); dv.className = 'flow-node' + (n.on ? ' on' : '');
+        dv.innerHTML = '<i class="bi bi-' + n.ic + '"></i><b></b><span></span>';
+        dv.querySelector('b').textContent = n.t; dv.querySelector('span').textContent = n.s; box.appendChild(dv);
+    });
+}
+
 function dvLoc() {
     var tu = (document.getElementById('dvTim').value || '').trim().toLowerCase();
     document.querySelectorAll('#dvDs .dv-item').forEach(function (e) { e.style.display = (!tu || e.dataset.ten.indexOf(tu) !== -1) ? '' : 'none'; });
@@ -216,46 +289,8 @@ function dtHienFile() {
         ul.appendChild(li);
     });
 }
-document.addEventListener('DOMContentLoaded', dvDem);
-
-var dtLaVT1 = @(Model.LaVanThuCap1 ? "true" : "false"), dtLaVT2 = @(Model.LaVanThuCap2 ? "true" : "false");
-var dtTs = null;
-function dtPhamVi() { var r = document.querySelector('input[name="DuThao.PhamVi"]:checked'); return r ? r.value : '1'; }
-function dtDoiPhamVi() {
-    var pv = dtPhamVi();
-    var bo = document.getElementById('boChuoiDuyet'); if (bo) bo.style.display = pv === '2' ? 'none' : '';
-    var bh = document.getElementById('btnBanHanh');
-    if (bh) bh.style.display = ((pv === '1' && dtLaVT1) || (pv === '2' && dtLaVT2)) ? '' : 'none';
-    var tr = document.getElementById('btnTrinh');
-    if (tr) { var banhanh = (pv === '1' && dtLaVT1) || (pv === '2' && dtLaVT2); tr.className = banhanh ? 'btn btn-outline-primary btn-lg' : 'btn btn-primary btn-lg'; }
-    dtVeLuong();
-}
-function dtChuoi() { return dtTs ? dtTs.items.slice() : []; }
-function dtVeLuong() {
-    var pv = dtPhamVi(), box = document.getElementById('dtFlow'); if (!box) return;
-    var nodes = [{ ic: 'pencil', t: 'Người soạn', s: 'Bạn soạn và trình', on: true }];
-    if (pv === '2') nodes.push({ ic: 'person-check', t: 'Lãnh đạo đơn vị', s: 'Duyệt hoặc trả lại' }, { ic: 'journal-check', t: 'Văn thư đơn vị (cấp 2)', s: 'Ban hành nội bộ đơn vị' });
-    else {
-        var ch = dtChuoi();
-        if (ch.length === 0) nodes.push({ ic: 'person-check', t: 'Chưa chọn người duyệt', s: 'Chuyển thẳng văn thư trường' });
-        ch.forEach(function (id, i) { var o = dtTs.options[id]; nodes.push({ ic: 'person-check', t: 'Duyệt/ký cấp ' + (i + 1), s: o ? String(o.text).split(' — ')[0] : '' }); });
-        nodes.push({ ic: 'journal-check', t: 'Văn thư trường (cấp 1)', s: 'Ban hành, cấp số ký hiệu' });
-    }
-    box.innerHTML = '';
-    nodes.forEach(function (n, i) {
-        if (i > 0) { var a = document.createElement('div'); a.className = 'flow-arrow'; box.appendChild(a); }
-        var d = document.createElement('div'); d.className = 'flow-node' + (n.on ? ' on' : '');
-        d.innerHTML = '<i class="bi bi-' + n.ic + '"></i><b></b><span></span>';
-        d.querySelector('b').textContent = n.t; d.querySelector('span').textContent = n.s; box.appendChild(d);
-    });
-}
 document.addEventListener('DOMContentLoaded', function () {
-    var el = document.getElementById('selChuoi');
-    if (el && window.TomSelect) {
-        dtTs = new TomSelect(el, { plugins: ['remove_button', 'drag_drop'], maxOptions: 200,
-            onChange: function () { document.getElementById('chuoiDuyetCsv').value = dtChuoi().join(','); dtVeLuong(); } });
-        document.getElementById('chuoiDuyetCsv').value = dtChuoi().join(',');
-    }
-    dtDoiPhamVi();
+    dvDem(); dtDoiPhamVi();
+    var sel = document.getElementById('selKy'); if (sel) sel.addEventListener('change', dtVeLuong);
 });
 </script>

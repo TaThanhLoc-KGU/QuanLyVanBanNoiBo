@@ -3,13 +3,7 @@
     var d = Model.DuThao;
     ViewData["Title"] = "Văn bản đi #" + d.ID;
     string buoc = Model.BuocHienTai; // soan | duyet | banhanh | xong
-    string Cls(string b)
-    {
-        string[] thuTu = { "soan", "duyet", "banhanh", "xong" };
-        int cur = Array.IndexOf(thuTu, buoc), me = Array.IndexOf(thuTu, b);
-        return me < cur ? "done" : me == cur ? (buoc == "xong" ? "done" : "on") : "";
-    }
-    bool sua = Model.LaNguoiSoan && d.TrangThai != CongVan.Models.DuThao.DaBanHanh && Model.Panel.DongCuaToi != null || (Model.LaNguoiSoan && d.TrangThai == CongVan.Models.DuThao.Nhap);
+    bool khungXemXet = (Model.CoTheDuyet || Model.CoTheBanHanh) && !Model.LaNguoiSoan;
 }
 
 <div class="page-header">
@@ -28,47 +22,102 @@
                 <button class="@(Model.CoTheBanHanhNgay ? "btn btn-outline-primary" : "btn btn-primary")" onclick="return confirm('Trình duyệt văn bản này?')"><i class="bi bi-send-fill me-1"></i>Trình duyệt</button>
             </form>
         }
-        @if (Model.CoTheDuyet)
+        @if (Model.CoTheSua)
         {
-            <form asp-action="Duyet" asp-route-id="@d.ID" method="post" class="d-inline">
-                <button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Duyệt &amp; chuyển tiếp</button>
-            </form>
-        }
-        @if (Model.CoTheBanHanh)
-        {
-            <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành</a>
-        }
-        @if (sua)
-        {
-            <a asp-action="Nhap" asp-route-id="@d.ID" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Sửa</a>
+            <a asp-action="Nhap" asp-route-id="@d.ID" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Chỉnh sửa</a>
         }
         @if (Model.LaNguoiSoan && d.TrangThai == CongVan.Models.DuThao.Nhap)
         {
             <form asp-action="Xoa" asp-route-id="@d.ID" method="post" class="d-inline">
-                <button class="btn btn-outline-danger" onclick="return confirm('Xóa dự thảo này? Không thể khôi phục.')"><i class="bi bi-trash3 me-1"></i>Xóa</button>
+                <button class="btn btn-outline-danger" onclick="return confirm('Xóa văn bản này? Không thể khôi phục.')"><i class="bi bi-trash3 me-1"></i>Xóa</button>
             </form>
         }
         <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Văn bản đi</a>
     </div>
 </div>
 
-@* ── Sơ đồ luồng: đang ở bước nào ── *@
+@* ── Sơ đồ luồng theo đúng chuỗi bước của văn bản này ── *@
 <div class="card mb-3"><div class="card-body">
     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
         <span class="sbadge @(d.PhamVi == 2 ? "sbadge-info" : "sbadge-primary")"><i class="bi @(d.PhamVi == 2 ? "bi-people" : "bi-building")"></i>@d.TenPhamVi</span>
         @if (buoc != "xong" && !string.IsNullOrEmpty(Model.TenNguoiDangGiu)) { <span class="fs-13 text-muted">Đang ở: <strong>@Model.TenNguoiDangGiu</strong></span> }
+        @if (buoc == "soan" && d.TrangThai == CongVan.Models.DuThao.DangXuLy) { <span class="badge-status overdue">Bị trả lại — cần chỉnh sửa</span> }
     </div>
     <div class="flow-line">
-        <div class="flow-node @Cls("soan")"><i class="bi bi-pencil"></i><b>Người soạn</b><span>@d.TenNVSoan</span></div>
-        <div class="flow-arrow"></div>
-        <div class="flow-node @Cls("duyet")"><i class="bi bi-person-check"></i><b>@(d.PhamVi == 2 ? "Lãnh đạo đơn vị duyệt" : (Model.TenChuoiConLai.Count > 1 ? "Duyệt/ký " + Model.TenChuoiConLai.Count + " cấp" : "Duyệt/ký"))</b>
-            <span>@(d.PhamVi == 2 ? (string.IsNullOrEmpty(Model.TenLanhDaoDonVi) ? "Chưa cấu hình lãnh đạo" : Model.TenLanhDaoDonVi) : (Model.TenChuoiConLai.Any() ? string.Join(" → ", Model.TenChuoiConLai) : "Không qua bước duyệt"))</span></div>
-        <div class="flow-arrow"></div>
-        <div class="flow-node @Cls("banhanh")"><i class="bi bi-journal-check"></i><b>@Model.TenVanThu ban hành</b><span>@(d.PhamVi == 2 ? "Vào sổ nội bộ đơn vị" : "Vào sổ, cấp số ký hiệu")</span></div>
-        <div class="flow-arrow"></div>
-        <div class="flow-node @(buoc == "xong" ? "done" : "")"><i class="bi bi-check-circle"></i><b>Đã ban hành</b><span>@(!string.IsNullOrEmpty(d.MSCVDi) ? "Số " + d.MSCVDi.Trim() : d.MaVBNoiBo.HasValue ? "Nội bộ #" + d.MaVBNoiBo : "—")</span></div>
+        @for (int i = 0; i < Model.Flow.Count; i++)
+        {
+            var fn = Model.Flow[i];
+            if (i > 0) { <div class="flow-arrow"></div> }
+            <div class="flow-node @fn.Trang"><i class="bi bi-@fn.Icon"></i><b>@fn.Ten</b><span>@fn.Phu</span></div>
+        }
     </div>
 </div></div>
+
+@* ── Khối XEM XÉT & KÝ DUYỆT của người đang giữ văn bản ── *@
+@if (khungXemXet)
+{
+    <div class="card mb-3" style="border:1.5px solid var(--primary);">
+        <div class="card-header" style="background:var(--primary-50);">
+            <span class="card-title"><i class="bi bi-clipboard-check me-1 text-primary"></i>@(Model.CoTheBanHanh ? "Chờ bạn ban hành" : "Chờ bạn xem xét")</span>
+        </div>
+        <div class="card-body">
+            <p class="fs-13 text-muted mb-3">@(Model.CoTheBanHanh ? "Văn bản đã được duyệt/ký xong. Bấm Ban hành để vào sổ và cấp số ký hiệu." : Model.MoTaBuocHienTai)</p>
+
+            @if (Model.Files.Any())
+            {
+                <div class="mb-3">
+                    <div class="fs-12 fw-700 text-muted mb-1" style="text-transform:uppercase;letter-spacing:.04em;">File cần xem</div>
+                    @foreach (var f in Model.Files)
+                    {
+                        <div class="d-flex align-items-center gap-2 py-1 fs-13"><i class="bi bi-file-earmark-text text-primary"></i>
+                            <a asp-action="TaiFile" asp-route-fileId="@f.ID" target="_blank">@f.TenFile</a></div>
+                    }
+                </div>
+            }
+
+            @if (Model.CoTheBanHanh)
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    <a asp-controller="@Model.LinkBanHanhController" asp-action="Nhap" asp-route-duThao="@d.ID" class="btn btn-success"><i class="bi bi-journal-check me-1"></i>Ban hành</a>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalTraLaiDT"><i class="bi bi-arrow-return-left me-1"></i>Trả lại</button>
+                </div>
+            }
+            else
+            {
+                <form asp-action="Duyet" asp-route-id="@d.ID" method="post" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Ý kiến của bạn <span class="text-muted fs-12">(tuỳ chọn khi duyệt, bắt buộc khi trả lại)</span></label>
+                            <textarea name="noiDung" id="txtYKien" class="form-control" rows="3" maxlength="1000" placeholder="Ví dụ: Đồng ý. Bổ sung nơi nhận là các khoa..."></textarea>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">File đã ký / đã chỉnh sửa <span class="text-muted fs-12">(tuỳ chọn)</span></label>
+                            <input type="file" name="fileKy" class="form-control" />
+                        </div>
+                        <div class="col-12 d-flex gap-2 flex-wrap">
+                            <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>@Model.NhanNutDuyet</button>
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalTraLaiDT"><i class="bi bi-arrow-return-left me-1"></i>Trả lại</button>
+                            @if (Model.CoTheSua) { <a asp-action="Nhap" asp-route-id="@d.ID" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Sửa nội dung</a> }
+                        </div>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTraLaiDT" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <form asp-action="TraLai" asp-route-id="@d.ID" method="post">
+                <div class="modal-header"><h6 class="modal-title fw-700">Trả lại văn bản</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted">Văn bản quay về người ở bước trước để chỉnh sửa và trình lại.</p>
+                    <textarea name="lyDo" class="form-control" rows="4" maxlength="1000" required placeholder="Lý do trả lại — cần sửa gì?"></textarea>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button><button class="btn btn-danger btn-sm">Trả lại</button></div>
+            </form>
+        </div></div>
+    </div>
+}
 
 <partial name="_XuLyCaNhan" model="Model.Panel" />
 
@@ -81,13 +130,13 @@
             <tr><td class="detail-lbl">Độ khẩn</td><td class="detail-val" style="@(d.DoKhan > 0 ? "color:var(--seal);font-weight:700;" : "")">@d.TenDoKhan</td></tr>
             @if (!string.IsNullOrEmpty(d.TenNCV)) { <tr><td class="detail-lbl">Lĩnh vực</td><td class="detail-val">@d.TenNCV</td></tr> }
             <tr><td class="detail-lbl">Hình thức</td><td class="detail-val">@d.TenHinhThuc</td></tr>
-            <tr><td class="detail-lbl">Người ký dự kiến</td><td class="detail-val">@(d.TenNVKy ?? "—")</td></tr>
+            <tr><td class="detail-lbl">@(d.PhamVi == 2 ? "Lãnh đạo đơn vị ký" : "Lãnh đạo trường ký")</td><td class="detail-val">@(d.TenNVKy ?? "—")</td></tr>
             <tr><td class="detail-lbl">Hạn xử lý</td><td class="detail-val">@(d.HanXuLy?.ToString("dd/MM/yyyy") ?? "—")</td></tr>
             @if (!string.IsNullOrEmpty(d.MSCVDen))
             {
                 <tr><td class="detail-lbl">Trả lời văn bản đến</td><td class="detail-val"><a asp-controller="CongVanDen" asp-action="ChiTiet" asp-route-id="@d.MSCVDen">@(d.TrichYeuDen ?? d.MSCVDen)</a></td></tr>
             }
-            @if (!string.IsNullOrEmpty(d.NoiDungXuLy)) { <tr><td class="detail-lbl">Nội dung xử lý</td><td class="detail-val" style="white-space:pre-line;">@d.NoiDungXuLy</td></tr> }
+            @if (!string.IsNullOrEmpty(d.NoiDungXuLy)) { <tr><td class="detail-lbl">Ghi chú cho người duyệt</td><td class="detail-val" style="white-space:pre-line;">@d.NoiDungXuLy</td></tr> }
             <tr><td class="detail-lbl">Nơi nhận</td><td class="detail-val">
                 @if (!Model.TenDVNhan.Any() && string.IsNullOrEmpty(d.NoiNhanKhac)) { <span class="text-muted">Chưa chọn</span> }
                 @foreach (var t in Model.TenDVNhan) { <span class="sbadge sbadge-gray me-1 mb-1">@t</span> }

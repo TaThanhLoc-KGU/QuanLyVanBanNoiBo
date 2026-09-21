@@ -37,9 +37,9 @@ public partial class DbService
         using var db = Open();
         if (d.ID == 0)
             return await db.ExecuteScalarAsync<int>(
-                @"INSERT INTO DuThaoVanBanDi (TrichYeu, MaLVB, DoKhan, MaNCV, MaDVSoan, MaNVSoan, HinhThuc, HanXuLy, MaNVKy, NoiDungXuLy, DonViNhan, NoiNhanKhac, MSCVDen, PhamVi, ChuoiDuyet)
+                @"INSERT INTO DuThaoVanBanDi (TrichYeu, MaLVB, DoKhan, MaNCV, MaDVSoan, MaNVSoan, HinhThuc, HanXuLy, MaNVKy, NoiDungXuLy, DonViNhan, NoiNhanKhac, MSCVDen, PhamVi, ChuoiDuyet, BuocIdx)
                   OUTPUT INSERTED.ID
-                  VALUES (@TrichYeu, @MaLVB, @DoKhan, @MaNCV, @MaDVSoan, @MaNVSoan, @HinhThuc, @HanXuLy, @MaNVKy, @NoiDungXuLy, @DonViNhan, @NoiNhanKhac, @MSCVDen, @PhamVi, @ChuoiDuyet)", d);
+                  VALUES (@TrichYeu, @MaLVB, @DoKhan, @MaNCV, @MaDVSoan, @MaNVSoan, @HinhThuc, @HanXuLy, @MaNVKy, @NoiDungXuLy, @DonViNhan, @NoiNhanKhac, @MSCVDen, @PhamVi, @ChuoiDuyet, -1)", d);
         await db.ExecuteAsync(
             @"UPDATE DuThaoVanBanDi SET TrichYeu=@TrichYeu, MaLVB=@MaLVB, DoKhan=@DoKhan, MaNCV=@MaNCV, HinhThuc=@HinhThuc,
                 HanXuLy=@HanXuLy, MaNVKy=@MaNVKy, NoiDungXuLy=@NoiDungXuLy, DonViNhan=@DonViNhan, NoiNhanKhac=@NoiNhanKhac,
@@ -131,6 +131,33 @@ public partial class DbService
                 OR EXISTS(SELECT 1 FROM VanBan_XuLy x WHERE x.LoaiVB=2 AND x.MSCV=CAST(d.ID AS nvarchar(20)) AND x.MaNVNhan=@maNV))",
             new { mscvDi, maNV }) > 0;
     }
+
+    public async Task DatBuocDuThaoAsync(int id, int buocIdx)
+    {
+        using var db = Open();
+        await db.ExecuteAsync("UPDATE DuThaoVanBanDi SET BuocIdx=@buocIdx, NgayCapNhat=GETDATE() WHERE ID=@id", new { id, buocIdx });
+    }
+
+    public async Task GhiNhatKyDuThaoAsync(int id, short maNV, string hanhDong, string? noiDung)
+    {
+        using var db = Open();
+        await db.ExecuteAsync(
+            "INSERT INTO VanBan_NhatKy (LoaiVB, MSCV, MaNV, HanhDong, NoiDung) VALUES (2, @m, @maNV, @hanhDong, @noiDung)",
+            new { m = id.ToString(), maNV, hanhDong, noiDung });
+    }
+
+    // Trước khi chuyển bước: đóng các dòng "cùng bước" của người khác (vd nhiều văn thư cùng nhận) — chỉ 1 người xử lý.
+    public async Task DongCungBuocAsync(int maDT, int idDongGiuLai)
+    {
+        using var db = Open();
+        await db.ExecuteAsync(
+            @"UPDATE VanBan_XuLy SET TrangThai=2, NgayXuLy=GETDATE(), NgayXem=ISNULL(NgayXem,GETDATE()),
+                YKien=N'(người khác trong cùng bước đã xử lý)'
+              WHERE LoaiVB=2 AND MSCV=@m AND VaiTro=1 AND TrangThai IN (0,1) AND ID<>@idDongGiuLai",
+            new { m = maDT.ToString(), idDongGiuLai });
+    }
+
+    public async Task<bool> LaVanThuCap1Async(short maNV) => (await GetVanThuCap1Async()).Contains(maNV);
 
     public async Task DatChuoiDuyetAsync(int id, string? csv)
     {

@@ -196,6 +196,17 @@ public partial class DbService
                 @"UPDATE VanBan_XuLy SET TrangThai=0, NgayXuLy=NULL, NoiDungGui = N'[Bị trả lại] ' + @lyDo
                   WHERE ID=@idCha AND TrangThai=2",
                 new { idCha = x.IDCha.Value, lyDo }, tx);
+        if (x.LoaiVB == VanBanXuLy.LoaiDuThao)
+        {
+            // Dự thảo văn bản đi: đóng các dòng "cùng bước" còn treo (vd nhiều văn thư cùng nhận) và lùi chuỗi duyệt 1 bước.
+            await db.ExecuteAsync(
+                @"UPDATE VanBan_XuLy SET TrangThai=2, NgayXuLy=GETDATE(), YKien=N'(người khác trong cùng bước đã trả lại)'
+                  WHERE LoaiVB=2 AND MSCV=@mscv AND VaiTro=1 AND TrangThai IN (0,1) AND ID<>@id AND ID<>@idCha",
+                new { mscv = x.MSCV, id, idCha = x.IDCha ?? 0 }, tx);
+            await db.ExecuteAsync(
+                "UPDATE DuThaoVanBanDi SET BuocIdx = CASE WHEN BuocIdx > -1 THEN BuocIdx - 1 ELSE -1 END, NgayCapNhat=GETDATE() WHERE CAST(ID AS nvarchar(20))=@mscv",
+                new { mscv = x.MSCV }, tx);
+        }
         await GhiNhatKyAsync(db, tx, x.LoaiVB, x.MSCV, maNV, "TraLai", lyDo, x.MaNVGui);
         tx.Commit();
         return true;

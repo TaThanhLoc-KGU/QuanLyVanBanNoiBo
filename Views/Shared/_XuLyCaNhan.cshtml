@@ -6,7 +6,7 @@
     bool laChinh = coDong && dong!.VaiTro == VanBanXuLy.VaiTroChinh;
     bool laDong = coDong && dong!.VaiTro == VanBanXuLy.VaiTroDongXuLy;
     bool laXemBiet = coDong && dong!.VaiTro == VanBanXuLy.VaiTroXemBiet;
-    bool coTheChuyen = laChinh || laDong || (!coDong && Model.CoTheChuyenGoc);
+    bool coTheChuyen = !Model.AnNut && (laChinh || laDong || (!coDong && Model.CoTheChuyenGoc));
     bool hienPanel = coDong || Model.TatCa.Any() || Model.CoTheChuyenGoc;
     string idModal = "xl" + Model.LoaiVB + "_" + Model.MSCV.Trim();
     string TenTt(VanBanXuLy x) => x.TenTrangThai;
@@ -24,19 +24,19 @@
                     <i class="bi bi-send-fill me-1"></i>@(coDong ? "Chuyển tiếp" : "Chuyển xử lý")
                 </button>
             }
-            @if (laDong)
+            @if (laDong && !Model.AnNut)
             {
                 <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#@(idModal)_ykien">
                     <i class="bi bi-chat-left-text me-1"></i>Cho ý kiến
                 </button>
             }
-            @if (laChinh)
+            @if (laChinh && !Model.AnNut)
             {
                 <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#@(idModal)_ketthuc">
                     <i class="bi bi-check2-circle me-1"></i>Kết thúc xử lý
                 </button>
             }
-            @if (laChinh || laDong)
+            @if ((laChinh || laDong) && !Model.AnNut)
             {
                 <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#@(idModal)_tralai">
                     <i class="bi bi-arrow-return-left me-1"></i>Trả lại

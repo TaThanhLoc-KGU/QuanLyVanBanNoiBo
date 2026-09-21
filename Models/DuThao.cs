@@ -28,9 +28,11 @@ public class DuThao
     public byte PhamVi { get; set; } = 1;          // 1 = Cấp trường (văn thư cấp 1 ban hành), 2 = Nội bộ đơn vị (văn thư cấp 2 ban hành)
     public string? ChuoiDuyet { get; set; }        // csv MaNV còn phải duyệt/ký theo thứ tự
     public int? MaVBNoiBo { get; set; }            // văn bản nội bộ đơn vị sinh ra khi ban hành PhamVi=2
+    public short BuocIdx { get; set; } = -1;       // -1 = ở người soạn; 0..n-1 = bước duyệt thứ i; n = chờ văn thư ban hành
 
-    public List<short> ChuoiDuyetIds => (ChuoiDuyet ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
-        .Where(x => short.TryParse(x, out _)).Select(short.Parse).ToList();
+    public const string BuocVanThu1 = "VT1"; // bước "Văn thư cấp 1 kiểm tra thể thức" trong chuỗi
+    public List<string> ChuoiBuoc => (ChuoiDuyet ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
+    public bool DaKhoaCauHinh => TrangThai == DangXuLy && BuocIdx >= 0; // đã trình: không đổi phạm vi/người ký/chuỗi nữa
     public string TenPhamVi => PhamVi == 2 ? "Nội bộ đơn vị" : "Cấp trường";
 
     // Hiển thị
@@ -65,8 +67,11 @@ public class DuThaoFormViewModel
     public List<DuThaoFile> Files { get; set; } = new();
     public List<byte> DVNhan { get; set; } = new();
     public string TenDVSoan { get; set; } = "";
-    public List<NhanVien> DanhSachNguoiDuyet { get; set; } = new();
-    public List<short> ChuoiDuyet { get; set; } = new();
+    public List<NhanVien> DanhSachKyTruong { get; set; } = new();   // lãnh đạo trường (người ký văn bản cấp trường)
+    public NhanVien? LanhDaoDonVi { get; set; }                     // lãnh đạo đơn vị soạn (người duyệt/ký văn bản nội bộ)
+    public bool TacGiaLaLanhDaoDonVi { get; set; }
+    public bool Khoa { get; set; }                                   // đã trình: khóa phạm vi/người ký
+    public bool NguoiSuaLaTacGia { get; set; } = true;
     public bool LaVanThuCap1 { get; set; }
     public bool LaVanThuCap2 { get; set; }
 }
@@ -78,16 +83,28 @@ public class DuThaoChiTietViewModel
     public XuLyPanelViewModel Panel { get; set; } = new();
     public bool LaNguoiSoan { get; set; }
     public bool CoTheTrinh { get; set; }
-    public bool CoTheDuyetChuyenVanThu { get; set; }
     public bool CoTheBanHanh { get; set; }
     public string TenLanhDaoDonVi { get; set; } = "";
     public string BuocHienTai { get; set; } = "soan"; // soan | duyet | banhanh | xong
     public List<string> TenDVNhan { get; set; } = new();
     public bool CoTheBanHanhNgay { get; set; }
     public bool CoTheDuyet { get; set; }
+    public bool CoTheSua { get; set; }
+    public bool CoTheTraLai { get; set; }
+    public string NhanNutDuyet { get; set; } = "Duyệt & chuyển tiếp";
+    public string MoTaBuocHienTai { get; set; } = "";
+    public List<FlowNode> Flow { get; set; } = new();
     public string LinkBanHanhController { get; set; } = "CongVanDi";
     public string TenVanThu { get; set; } = "Văn thư";
     public string CapVanThu { get; set; } = "cấp 1";
     public List<string> TenChuoiConLai { get; set; } = new();
     public string TenNguoiDangGiu { get; set; } = "";
+}
+
+public class FlowNode
+{
+    public string Ten { get; set; } = "";
+    public string Phu { get; set; } = "";
+    public string Icon { get; set; } = "person-check";
+    public string Trang { get; set; } = ""; // "" | on | done
 }

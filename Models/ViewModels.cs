@@ -281,5 +281,6 @@ public class XuLyPanelViewModel
     public List<VanBanXuLy> TatCa { get; set; } = new();
     public List<VanBanNhatKy> NhatKy { get; set; } = new();
     public bool CoTheChuyenGoc { get; set; }
+    public bool AnNut { get; set; }           // ẩn các nút hành động (trang tự có khối xem xét riêng, vd dự thảo văn bản đi)
     public List<NhanVien> NhanVien { get; set; } = new();
 }

@@ -42,6 +42,7 @@ else
                     <th style="width:90px;">Độ khẩn</th>
                     <th style="width:120px;">Cập nhật</th>
                     <th style="width:130px;">Trạng thái</th>
+                    <th style="width:60px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -57,6 +58,12 @@ else
                     <td style="@(d.DoKhan > 0 ? "color:var(--seal);font-weight:700;" : "")">@d.TenDoKhan</td>
                     <td class="mono">@d.NgayCapNhat.ToString("dd/MM/yyyy")</td>
                     <td><span class="badge-status @(d.TrangThai == 3 ? "done" : d.TrangThai == 1 ? "processing" : "new")">@d.TenTrangThai</span></td>
+                    <td style="text-align:center;">
+                        @if (d.TrangThai != 3)
+                        {
+                            <a asp-action="Nhap" asp-route-id="@d.ID" onclick="event.stopPropagation();" class="btn btn-icon btn-outline-primary" title="Chỉnh sửa"><i class="bi bi-pencil"></i></a>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>
